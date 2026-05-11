@@ -90,6 +90,12 @@ Every record gets a generated `id` of the form `id_<n>_<base36-timestamp>` from 
 - **Backwards compatibility on import** — `mtype` values `3ph`/`1ph`/`2ph` from older exports are auto-converted to `metered` (see [sld_builder.html:1086-1087](sld_builder.html#L1086-L1087) and [sld_builder.html:1144-1148](sld_builder.html#L1144-L1148)). Keep this conversion in place when touching import code.
 - **No build step** — keep the project as a single HTML file unless the user explicitly asks to split it. Drop-in editability is a feature.
 
+## Git workflow
+
+- **Always commit and push to `main` after every task.** Do not leave changes uncommitted.
+- **Never create branches** — all work goes directly to `main`.
+- Remote: `https://github.com/elizadj/rms_sld` (branch `main`).
+
 ---
 
 ## Quick reference — common edits
