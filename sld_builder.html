@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SLD Metering Schematic Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ─── PROFESSIONAL ENGINEERING UI — neutral greys, single muted accent ─────── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:          #ffffff;
+  --bg-alt:      #f5f6f7;        /* light grey for canvas background */
+  --bg-panel:    #fafafa;        /* sidebar / panels */
+  --border:      #d1d5db;        /* neutral mid-grey borders */
+  --border-soft: #e5e7eb;
+  --text:        #1f2937;        /* near-black for body text */
+  --text-muted:  #6b7280;
+  --text-faint:  #9ca3af;
+  --accent:      #334155;        /* slate — single accent for primary actions */
+  --accent-hover:#1e293b;
+  --accent-text: #ffffff;
+  --row-active:  #e5e7eb;
+  --shadow:      0 1px 3px rgba(0,0,0,.08);
+}
+body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--text);background:var(--bg);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* Top toolbar — slim charcoal bar, monochrome buttons */
+#toolbar{background:#1f2937;color:#e5e7eb;padding:0 14px;height:42px;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:nowrap;border-bottom:1px solid #111827}
+#toolbar .logo{font-weight:600;font-size:14px;color:#f9fafb;margin-right:14px;white-space:nowrap;letter-spacing:.2px}
+#toolbar .logo::before{content:"";display:inline-block;width:14px;height:14px;background:#94a3b8;clip-path:polygon(40% 0,100% 0,60% 45%,100% 45%,0 100%,40% 55%,0 55%);margin-right:8px;vertical-align:-2px}
+.tbtn{background:transparent;color:#e5e7eb;border:1px solid transparent;padding:5px 11px;border-radius:3px;cursor:pointer;font-size:12px;white-space:nowrap;font-family:inherit;line-height:1.4}
+.tbtn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15)}
+.tbtn.primary{background:#475569;border-color:#475569;color:#fff}
+.tbtn.primary:hover{background:#334155;border-color:#334155}
+.tbtn.danger{color:#fecaca}
+.tbtn.danger:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#fff}
+.tbtn.success{color:#bbf7d0}
+.tbtn.success:hover{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.3);color:#fff}
+#toolbar .sep{width:1px;height:20px;background:#374151;margin:0 4px}
+
+#main{display:flex;flex:1;overflow:hidden;background:var(--bg-alt)}
+
+/* Sidebar — clean white panel with neutral text */
+#sidebar{width:260px;min-width:260px;background:var(--bg-panel);color:var(--text);display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
+#sidebar-header{padding:10px 14px;background:var(--bg-panel);font-weight:600;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between}
+#sidebar-header .tbtn{color:var(--text);border:1px solid var(--border)}
+#sidebar-header .tbtn:hover{background:var(--row-active);border-color:var(--border)}
+#sidebar-tree{flex:1;overflow-y:auto;padding:4px 0}
+.tree-sld{margin-bottom:2px}
+.tree-sld-name{padding:7px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text);font-weight:600;font-size:12px;user-select:none;letter-spacing:.2px}
+.tree-sld-name:hover{background:var(--row-active)}
+.tree-sld-name .toggle{font-size:9px;width:10px;display:inline-block;color:var(--text-faint)}
+.tree-page{margin-left:0}
+.tree-page-name{padding:5px 12px 5px 30px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text);font-size:12px;border-left:3px solid transparent}
+.tree-page-name:hover{background:var(--row-active)}
+.tree-page-name.active{background:var(--row-active);border-left-color:var(--accent);font-weight:600}
+.tree-page-name span:last-child{color:var(--text-muted);font-size:11px;margin-left:auto;font-weight:400}
+.tree-add{margin-left:30px;padding:4px 6px;font-size:11px;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.tree-add:hover{color:var(--accent)}
+
+#canvas-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+#canvas-toolbar{background:var(--bg);border-bottom:1px solid var(--border-soft);padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+#canvas-title{font-weight:600;font-size:13px;color:var(--text);margin-right:8px}
+.cbtn{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 11px;border-radius:3px;cursor:pointer;font-size:12px;font-family:inherit}
+.cbtn:hover{background:var(--row-active);border-color:var(--border)}
+.cbtn.green{background:var(--bg);border:1px solid var(--border);color:var(--text)}
+.cbtn.green:hover{background:var(--row-active)}
+
+#canvas-scroll{flex:1;overflow:auto;background:#e7e9eb;padding:20px}
+#canvas-scroll.empty{display:flex;align-items:center;justify-content:center;background:var(--bg-alt)}
+.schematic-wrap{background:#fff;border:1px solid #9ca3af;box-shadow:var(--shadow);display:inline-block;min-width:min-content}
+.schematic-svg{display:block}
+
+/* Modals — neutral whites/greys */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(17,24,39,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:4px;padding:22px 26px;min-width:480px;max-width:680px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,.2);border:1px solid var(--border)}
+.modal h2{font-size:14px;color:var(--text);margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border-soft);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{border:1px solid var(--border);border-radius:3px;padding:7px 10px;font-size:13px;color:var(--text);background:#fff;font-family:inherit}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(51,65,85,.15)}
+.form-group .hint{font-size:10px;color:var(--text-faint);margin-top:2px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:22px;padding-top:14px;border-top:1px solid var(--border-soft)}
+.modal-actions button{padding:7px 18px;border-radius:3px;cursor:pointer;font-size:12px;border:1px solid var(--border);font-family:inherit;font-weight:500}
+.modal-actions .btn-save{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+.modal-actions .btn-save:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.modal-actions .btn-cancel{background:#fff;color:var(--text)}
+.modal-actions .btn-cancel:hover{background:var(--row-active)}
+.modal-actions .btn-delete{background:#fff;color:#b91c1c;border-color:#fecaca;margin-right:auto}
+.modal-actions .btn-delete:hover{background:#fef2f2;border-color:#fca5a5}
+
+/* Context menu */
+.ctx-menu{display:none;position:fixed;background:#fff;border:1px solid var(--border);border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:2000;min-width:160px}
+.ctx-menu.open{display:block}
+.ctx-item{padding:8px 14px;cursor:pointer;font-size:12px;color:var(--text)}
+.ctx-item:hover{background:var(--row-active)}
+.ctx-item.danger{color:#b91c1c}
+.ctx-item.danger:hover{background:#fef2f2}
+
+/* Zoom slider */
+#zoom-slider{accent-color:var(--accent)}
+@media print{
+  /* Force A3 landscape, tight margins so the schematic fills the page */
+  @page { size: A3 landscape; margin: 8mm; }
+  html,body{width:auto!important;height:auto!important;background:#fff!important;overflow:visible!important;margin:0!important;padding:0!important}
+  #toolbar,#sidebar,#canvas-toolbar{display:none!important}
+  #main,#canvas-area,#canvas-scroll{display:block!important;overflow:visible!important;height:auto!important;background:#fff!important;padding:0!important;margin:0!important}
+  /* Reset any zoom transform applied on screen */
+  .schematic-wrap{box-shadow:none!important;border:none!important;transform:none!important;width:auto!important;display:block!important;page-break-inside:avoid;page-break-after:always}
+  .schematic-wrap:last-child{page-break-after:auto}
+  /* Force the SVG to fill the printable area */
+  .schematic-svg{width:100%!important;height:auto!important;max-height:195mm!important;display:block;margin:0 auto}
+  .print-break{page-break-before:always}
+}
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <span class="logo">SLD Builder</span>
+  <div class="sep"></div>
+  <button class="tbtn primary" onclick="openNewSLD()">New SLD</button>
+  <button class="tbtn" onclick="openNewPage()">Add Page</button>
+  <button class="tbtn" onclick="openAddCircuit()">Add Circuit</button>
+  <button class="tbtn" onclick="openAddSubBoard()">Add Sub-Board</button>
+  <div class="sep"></div>
+  <button class="tbtn" onclick="exportExcel()">Export Excel</button>
+  <button class="tbtn" onclick="importExcelClick()">Import Excel</button>
+  <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+  <div class="sep"></div>
+  <button class="tbtn" onclick="saveProject()">Save Project</button>
+  <button class="tbtn" onclick="loadProjectClick()">Open Project</button>
+  <input type="file" id="jsonFile" accept=".json" style="display:none" onchange="loadProject(event)">
+  <div class="sep"></div>
+  <button class="tbtn" onclick="printCurrent()">Print Page</button>
+  <button class="tbtn" onclick="printAll()">Print All</button>
+</div>
+<div id="main">
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <span>Project Navigator</span>
+      <button class="tbtn" style="padding:2px 8px;font-size:11px" onclick="openNewSLD()">+ SLD</button>
+    </div>
+    <div id="sidebar-tree"></div>
+  </div>
+  <div id="canvas-area">
+    <div id="canvas-toolbar">
+      <span id="canvas-title">Select a page from the navigator</span>
+      <button class="cbtn" onclick="openAddCircuit()" id="btn-add-circuit" style="display:none">Add Circuit</button>
+      <button class="cbtn" onclick="openAddSubBoard()" id="btn-add-sub" style="display:none">Add Sub-Board</button>
+      <button class="cbtn" onclick="editCurrentMSB()" id="btn-edit-msb" style="display:none">Edit Page</button>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Zoom</label>
+        <input type="range" id="zoom-slider" min="40" max="200" value="100" style="width:120px" oninput="setZoom(this.value)">
+        <span id="zoom-label" style="font-size:12px;color:var(--text-muted);width:38px;text-align:right">100%</span>
+      </div>
+    </div>
+    <div id="canvas-scroll" class="empty">
+      <div style="text-align:center;color:var(--text-muted);max-width:420px">
+        <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase">Single Line Diagram Builder</div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Click <strong style="color:var(--text)">New SLD</strong> to start a project, or select a page from the navigator on the left to view its schematic.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New SLD -->
+<div class="modal-overlay" id="modal-sld">
+  <div class="modal">
+    <h2 id="modal-sld-title">New Single Line Diagram (SLD)</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label>SLD / Site Name</label><input id="sld-name" placeholder="e.g. Wendouree Shopping Centre"></div>
+      <div class="form-group full"><label>Address / Description</label><input id="sld-desc" placeholder="e.g. Cnr Norman St & Gillies St, Wendouree VIC"></div>
+      <div class="form-group"><label>Drawing Reference</label><input id="sld-ref" placeholder="e.g. SLD-001"></div>
+      <div class="form-group"><label>Date</label><input id="sld-date" type="date"></div>
+      <div class="form-group"><label>Prepared By</label><input id="sld-by" placeholder="Technician name"></div>
+      <div class="form-group"><label>Revision</label><input id="sld-rev" placeholder="e.g. Rev A"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-delete" id="btn-delete-sld" onclick="deleteCurrentSLD()" style="display:none">Delete SLD</button>
+      <button class="btn-cancel" onclick="closeModal('modal-sld')">Cancel</button>
+      <button class="btn-save" onclick="saveSLD()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Page / MSB -->
+<div class="modal-overlay" id="modal-page">
+  <div class="modal">
+    <h2 id="modal-page-title">Add Page / MSB</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label>Page / MSB Name</label><input id="page-name" placeholder="e.g. MSB-4 or MSB-NORTH"></div>
+      <div class="form-group full"><label>Description / Location</label><input id="page-desc" placeholder="e.g. Meter Room @ Cleaner/Comms Room"></div>
+      <div class="form-group"><label>Main Incomer Amps</label><input id="page-amps" placeholder="e.g. 2500"></div>
+      <div class="form-group"><label>Main Phases</label>
+        <select id="page-phases"><option value="3">3-Phase</option><option value="1">1-Phase</option><option value="2">2-Phase</option></select>
+      </div>
+      <div class="form-group"><label>Main Incomer CT Ratio</label><input id="page-ct" placeholder="e.g. 1500/5"></div>
+      <div class="form-group"><label>Incomer Meter Serial</label><input id="page-meter" placeholder="e.g. 219876026"></div>
+      <div class="form-group"><label>Incomer NMI</label><input id="page-nmi" placeholder="e.g. NMI620394002"></div>
+      <div class="form-group"><label>Incomer Rx</label><input id="page-rx" placeholder="e.g. 300"></div>
+      <div class="form-group"><label>Busbar Type</label>
+        <select id="page-bustype"><option value="solid">Solid Busbar</option><option value="split">Split Busbar</option><option value="trunking">Trunking / Channel</option></select>
+        <span class="hint">For "Split Busbar", assign a Section (A, B, ...) to each circuit</span>
+      </div>
+      <div class="form-group"><label>Network Boundary</label>
+        <select id="page-boundary"><option value="">Not specified</option><option value="inside">Inside Embedded Network (EN)</option><option value="outside">Outside Embedded Network (EN)</option><option value="mixed">Mixed EN / Non-EN</option></select>
+      </div>
+      <div class="form-group full"><label>Notes (shown on diagram)</label><input id="page-notes" placeholder="e.g. Busbar split in trunking / channel..."></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-delete" id="btn-delete-page" onclick="deleteCurrentPage()" style="display:none">Delete Page</button>
+      <button class="btn-cancel" onclick="closeModal('modal-page')">Cancel</button>
+      <button class="btn-save" onclick="savePage()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Circuit -->
+<div class="modal-overlay" id="modal-circuit">
+  <div class="modal">
+    <h2 id="modal-circuit-title">Add Circuit</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>CB Size (Amps)</label><input id="c-amps" placeholder="e.g. 100"></div>
+      <div class="form-group"><label>Phases</label>
+        <select id="c-phases"><option value="3">3-Phase</option><option value="1">1-Phase</option><option value="2">2-Phase</option></select>
+      </div>
+      <div class="form-group"><label>CT Ratio</label><input id="c-ct" placeholder="e.g. 200/5 (blank = no CT)"></div>
+      <div class="form-group"><label>Rx Multiplier</label><input id="c-rx" placeholder="e.g. 40, 1, 300"></div>
+      <div class="form-group full"><label>Meter Serial #</label><input id="c-meter" placeholder="e.g. SAM000025253"></div>
+      <div class="form-group full"><label>NMI Number</label><input id="c-nmi" placeholder="e.g. NMI7263901874"></div>
+      <div class="form-group"><label>kWh Reading</label><input id="c-kwh" placeholder="e.g. 2315.7"></div>
+      <div class="form-group"><label>Metered?</label>
+        <select id="c-mtype"><option value="metered">Metered</option><option value="none">No Meter</option></select>
+        <span class="hint">Use Notes for special configs e.g. "2PH DISC – 1PH METER"</span>
+      </div>
+      <div class="form-group"><label>Fx / Feeder Ref</label><input id="c-fx" placeholder="e.g. CFS-1 or DB1-1"></div>
+      <div class="form-group"><label>Shop / Circuit Number</label><input id="c-shop" placeholder="e.g. T-101 or K-103"></div>
+      <div class="form-group full"><label>Tenant / Shop Name</label><input id="c-name" placeholder="e.g. Woolworths"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="c-status">
+          <option value="Active">Active</option><option value="OFF">OFF</option><option value="VACANT">VACANT</option>
+          <option value="DISCONNECTED">DISCONNECTED</option><option value="NO LOAD">NO LOAD</option>
+          <option value="SPARE">SPARE</option><option value="TO VERIFY">TO VERIFY</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Bus Section</label><input id="c-section" placeholder="e.g. A, B, 1, 2 (split bus only)">
+        <span class="hint">Required if MSB busbar type is "Split"</span>
+      </div>
+      <div class="form-group"><label>Network Boundary</label>
+        <select id="c-boundary"><option value="">Not specified</option><option value="inside">Inside EN</option><option value="outside">Outside EN</option></select>
+      </div>
+      <div class="form-group full"><label>Notes</label><input id="c-notes" placeholder="e.g. 2PH DISC – 1PH METER, kiosk, etc."></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-delete" id="btn-delete-circuit" onclick="deleteCurrentCircuit()" style="display:none">Delete Circuit</button>
+      <button class="btn-cancel" onclick="closeModal('modal-circuit')">Cancel</button>
+      <button class="btn-save" onclick="saveCircuit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sub-Board -->
+<div class="modal-overlay" id="modal-sub">
+  <div class="modal">
+    <h2 id="modal-sub-title">Add Sub-Board / Feeder Set</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>Sub-Board Name</label><input id="sub-name" placeholder="e.g. MSB-NORTH or CFS-1"></div>
+      <div class="form-group"><label>Amps</label><input id="sub-amps" placeholder="e.g. 1400"></div>
+      <div class="form-group"><label>CT Ratio</label><input id="sub-ct" placeholder="e.g. 1500/5"></div>
+      <div class="form-group"><label>Phases</label>
+        <select id="sub-phases"><option value="3">3-Phase</option><option value="1">1-Phase</option><option value="2">2-Phase</option></select>
+      </div>
+      <div class="form-group"><label>Bus Section</label><input id="sub-section" placeholder="e.g. A, B (split bus only)"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="sub-status">
+          <option value="Active">Active</option><option value="OFF">OFF</option><option value="SPARE">SPARE</option>
+          <option value="DISCONNECTED">DISCONNECTED</option>
+        </select>
+      </div>
+      <div class="form-group full"><label>Shops / Tenancies Served</label><input id="sub-shops" placeholder="e.g. T49, T30, T31, K5"></div>
+      <div class="form-group full"><label>Notes</label><input id="sub-notes" placeholder="e.g. continuation on page 6..."></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-delete" id="btn-delete-sub" onclick="deleteCurrentSub()" style="display:none">Delete Sub-Board</button>
+      <button class="btn-cancel" onclick="closeModal('modal-sub')">Cancel</button>
+      <button class="btn-save" onclick="saveSub()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" id="ctx-edit">Edit</div>
+  <div class="ctx-item" id="ctx-addcircuit">Add Circuit</div>
+  <div class="ctx-item" id="ctx-addsub">Add Sub-Board</div>
+  <div class="ctx-item danger" id="ctx-delete">Delete</div>
+</div>
+
+<script>
+// ─── DATA MODEL ───────────────────────────────────────────────────────────────
+let project = { name:'New Project', slds:[] };
+let selectedSLDId = null;
+let selectedPageId = null;
+let currentZoom = 100;
+let editingId = null;
+let _id = 1;
+function uid(){ return 'id_'+(++_id)+'_'+Date.now().toString(36) }
+
+// ─── STATUS FILL TINTS (monochrome — text always black, fill flags status) ───
+const SC = {
+  'Active':       { fill:'#ffffff', stroke:'#000', text:'#000', badge:null },
+  'OFF':          { fill:'#e5e7eb', stroke:'#000', text:'#000', badge:'#6b7280' },
+  'VACANT':       { fill:'#f3f4f6', stroke:'#000', text:'#000', badge:'#6b7280' },
+  'DISCONNECTED': { fill:'#f3f4f6', stroke:'#000', text:'#000', badge:'#374151' },
+  'NO LOAD':      { fill:'#f3f4f6', stroke:'#000', text:'#000', badge:'#9ca3af' },
+  'SPARE':        { fill:'#fafafa', stroke:'#000', text:'#000', badge:'#9ca3af' },
+  'TO VERIFY':    { fill:'#fffaf0', stroke:'#000', text:'#000', badge:'#a16207' },
+};
+
+// ─── SIDEBAR ──────────────────────────────────────────────────────────────────
+function renderSidebar(){
+  const tree = document.getElementById('sidebar-tree');
+  if(!project.slds.length){
+    tree.innerHTML='<div style="padding:20px 14px;color:var(--text-muted);font-size:12px;text-align:center">No projects yet.<br><br>Click <b>New SLD</b> to start.</div>';
+    return;
+  }
+  tree.innerHTML = project.slds.map(sld=>`
+    <div class="tree-sld">
+      <div class="tree-sld-name" onclick="toggleSLD('${sld.id}')" oncontextmenu="showCtx(event,'sld','${sld.id}')">
+        <span class="toggle" id="tog-${sld.id}">▼</span>
+        <span>${esc(sld.name)}</span>
+      </div>
+      <div id="pages-${sld.id}">
+        ${sld.pages.map(pg=>`
+          <div class="tree-page">
+            <div class="tree-page-name ${selectedPageId===pg.id?'active':''}"
+                 onclick="selectPage('${sld.id}','${pg.id}')"
+                 oncontextmenu="showCtx(event,'page','${pg.id}','${sld.id}')">
+              <span>${esc(pg.name)}</span>
+              <span>${pg.amps?pg.amps+' A':''}</span>
+            </div>
+          </div>
+        `).join('')}
+        <span class="tree-add" onclick="openNewPage('${sld.id}')">+ Add Page</span>
+      </div>
+    </div>
+  `).join('');
+}
+function toggleSLD(id){
+  const el=document.getElementById('pages-'+id), tog=document.getElementById('tog-'+id);
+  if(el.style.display==='none'){el.style.display='block';tog.textContent='▼';}
+  else{el.style.display='none';tog.textContent='▶';}
+}
+function selectPage(sldId,pageId){
+  selectedSLDId=sldId; selectedPageId=pageId;
+  renderSidebar(); renderCanvas();
+}
+
+// ─── CANVAS ───────────────────────────────────────────────────────────────────
+function renderCanvas(){
+  const scroll=document.getElementById('canvas-scroll');
+  const title=document.getElementById('canvas-title');
+  if(!selectedPageId){
+    scroll.className='empty';
+    scroll.innerHTML='<div style="text-align:center;color:var(--text-muted);max-width:380px"><div style="font-size:13px;color:var(--text);font-weight:600;margin-bottom:4px">No page selected</div><div style="font-size:12px;color:var(--text-muted)">Select a page from the project navigator to view its schematic.</div></div>';
+    ['btn-add-circuit','btn-add-sub','btn-edit-msb'].forEach(id=>document.getElementById(id).style.display='none');
+    return;
+  }
+  const sld=project.slds.find(s=>s.id===selectedSLDId);
+  const page=sld&&sld.pages.find(p=>p.id===selectedPageId);
+  if(!page){selectedPageId=null;renderCanvas();return;}
+  title.textContent=`${sld.name}  /  ${page.name}${page.amps?'  ·  '+page.amps+' A':''}`;
+  ['btn-add-circuit','btn-add-sub','btn-edit-msb'].forEach(id=>document.getElementById(id).style.display='');
+  scroll.className='';
+  scroll.innerHTML=`<div class="schematic-wrap" style="transform-origin:top left;transform:scale(${currentZoom/100})">${buildSchematicSVG(page,sld)}</div>`;
+}
+function setZoom(v){
+  currentZoom=parseInt(v);
+  document.getElementById('zoom-label').textContent=v+'%';
+  const w=document.querySelector('.schematic-wrap');
+  if(w) w.style.transform=`scale(${currentZoom/100})`;
+}
+
+// ─── SVG GEOMETRY (HORIZONTAL BUSBAR LAYOUT — per AS/IEC SLD style) ──────────
+// Layout: incomer drops vertically from top onto a horizontal busbar,
+// circuits drop vertically from the bus, each ending in a vertical load-name box.
+const COL_W        = 90;      // width per circuit column (narrower so more circuits fit per A3 page)
+const LEFT_PAD     = 50;
+const RIGHT_PAD    = 50;
+const TIT_H        = 48;      // title bar (page name + sub-params only — NO right detail block)
+const NOTE_BAND_H  = 22;
+const INC_DROP_H   = 150;     // vertical space reserved above the bus for the incomer
+const FT_H         = 56;      // footer (single title block — Site | MSB | Date | By | Rev)
+
+// Per-row vertical offsets BELOW the busbar (measured from busY)
+const ROW_PHASE_Y    = 14;    // phase ticks just below bus tap
+const ROW_AMP_Y      = 30;    // amps label above CB
+const ROW_CB_TOP     = 36;
+const ROW_CB_H       = 20;
+const ROW_CB_BOT     = ROW_CB_TOP + ROW_CB_H;     // 56
+const ROW_CT_CY      = 80;    // CT centre (reserved slot even if no CT)
+const ROW_M_CY       = 116;   // Meter centre (reserved slot even if no meter)
+const ROW_BOX_TOP    = 150;   // load-name box top
+const ROW_BOX_H      = 210;   // load-name box height (taller so vertical text reads cleanly)
+
+const CT_R = 12;
+const M_R  = 12;
+
+// rough average char width
+const CW_9  = 5.0;
+const CW_10 = 5.5;
+function clipText(str, maxPx, fontPx){
+  const cw = fontPx>=10 ? CW_10 : CW_9;
+  const max = Math.max(2, Math.floor(maxPx/cw));
+  if(!str) return '';
+  return str.length<=max ? str : str.substring(0, max-1)+'…';
+}
+
+// Phase ticks crossing a VERTICAL wire at (cx, cy) going down (PDF style)
+function phaseTicksV(cx, cy, ph){
+  let s='';
+  for(let t=0;t<ph;t++){
+    const ty = cy + t*5;
+    s += `<line x1="${cx-5}" y1="${ty+4}" x2="${cx+5}" y2="${ty-3}" stroke="#000" stroke-width="1.5"/>`;
+  }
+  return s;
+}
+
+// Vertical text helper — renders text rotated -90° so it reads bottom-to-top.
+// (x, y) is the anchor point at the BOTTOM of the rendered text.
+function vText(x, y, str, opts){
+  opts = opts || {};
+  const fs = opts.fontSize || 9;
+  const fw = opts.fontWeight ? ` font-weight="${opts.fontWeight}"` : '';
+  const fi = opts.fontStyle ? ` font-style="${opts.fontStyle}"` : '';
+  const fill = opts.fill || '#111';
+  const anchor = opts.anchor || 'start';
+  return `<text x="${x}" y="${y}" font-size="${fs}"${fw}${fi} fill="${fill}" text-anchor="${anchor}" transform="rotate(-90 ${x} ${y})">${esc(str)}</text>`;
+}
+
+function buildSchematicSVG(page, sld){
+  const allCircuits  = (page.circuits  || []).map(c=>({type:'circuit',data:c}));
+  const allSubBoards = (page.subBoards || []).map(sb=>({type:'sub',data:sb}));
+  const rows = [...allCircuits, ...allSubBoards];
+
+  const hasIncomer   = !!(page.amps || page.ct || page.meter);
+  const hasPageNotes = !!page.notes;
+  const NOTE_H = hasPageNotes ? NOTE_BAND_H : 0;
+
+  // Bus Y position
+  const busY = TIT_H + NOTE_H + (hasIncomer ? INC_DROP_H : 30);
+
+  // Column geometry
+  const numCols = Math.max(rows.length, 1);
+  // Scale column width down for wide pages so the SVG fits A3 landscape (≈1480 px net).
+  // COL_W is the preferred maximum; for pages with many circuits it shrinks proportionally.
+  const colW = Math.min(COL_W, Math.floor((1480 - LEFT_PAD - RIGHT_PAD) / numCols));
+  // Enforce a minimum SVG width so the footer title block never clips short text.
+  const svgW = Math.max(900, LEFT_PAD + numCols * colW + RIGHT_PAD);
+  const colCx = (i)=> LEFT_PAD + i*colW + colW/2;
+
+  // Bus extents
+  const busLeft  = LEFT_PAD + 8;
+  const busRight = LEFT_PAD + numCols * colW - 8;
+
+  // Find incomer drop column — boundary between OUTSIDE EN and INSIDE EN circuits.
+  // Default: middle of the bus.
+  let incIdx = rows.findIndex(r => (r.data.boundary||'') !== 'outside' && (r.data.boundary||'') !== '');
+  let incX;
+  if(incIdx > 0){
+    incX = LEFT_PAD + incIdx * colW;          // gap between cols
+  } else if(rows.length){
+    incX = (busLeft + busRight)/2;             // centre of bus
+  } else {
+    incX = LEFT_PAD + colW/2;
+  }
+
+  // Row content heights (consistent grid for all columns)
+  const rowSpineBot = busY + ROW_BOX_TOP - 6;             // wire from bus down to box top
+  const boxBot      = busY + ROW_BOX_TOP + ROW_BOX_H;
+  const svgH        = boxBot + 30 + FT_H;
+
+  let s = `<svg class="schematic-svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" font-family="Arial,sans-serif">`;
+  s += `<rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#fff" stroke="#333" stroke-width="1.5"/>`;
+
+  // ── TITLE BAR (top, centred — monochrome) ──
+  s += `<rect x="0" y="0" width="${svgW}" height="${TIT_H}" fill="#f3f4f6" stroke="#000" stroke-width="0.8"/>`;
+  const titleParts = [];
+  if(sld?.name) titleParts.push(sld.name);
+  titleParts.push(page.name || '');
+  s += `<text x="${svgW/2}" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#000">${esc(titleParts.filter(Boolean).join(' — '))}</text>`;
+  let tp=[];
+  if(page.amps)    tp.push(page.amps+' A');
+  if(page.phases)  tp.push(page.phases+'-Ph');
+  if(page.ct)      tp.push('CT: '+page.ct);
+  if(page.bustype && page.bustype!=='solid') tp.push(page.bustype==='split'?'Split Bus':'Trunking');
+  if(page.boundary) tp.push(page.boundary==='inside'?'Inside EN':page.boundary==='outside'?'Outside EN':'Mixed EN');
+  if(page.desc)    tp.unshift(page.desc);
+  if(tp.length){
+    s += `<text x="${svgW/2}" y="36" text-anchor="middle" font-size="10" fill="#000">${esc(tp.join('  |  '))}</text>`;
+  }
+
+  // ── PAGE NOTES BANNER ──
+  if(hasPageNotes){
+    const ny = TIT_H;
+    s += `<rect x="0" y="${ny}" width="${svgW}" height="${NOTE_BAND_H}" fill="#fafafa" stroke="#000" stroke-width="0.5"/>`;
+    s += `<text x="8" y="${ny+14}" font-size="10" font-weight="bold" fill="#000">NOTE:</text>`;
+    s += `<text x="46" y="${ny+14}" font-size="10" fill="#000">${esc(clipText(page.notes, svgW-56, 10))}</text>`;
+  }
+
+  // ── INCOMER (vertical drop above the bus) ──
+  if(hasIncomer){
+    const incTop = TIT_H + NOTE_H + 6;
+
+    // Down arrow at top
+    s += `<polygon points="${incX-4},${incTop} ${incX+4},${incTop} ${incX},${incTop+8}" fill="#111"/>`;
+
+    // Vertical incomer wire (top → bus)
+    s += `<line x1="${incX}" y1="${incTop+8}" x2="${incX}" y2="${busY}" stroke="#111" stroke-width="2"/>`;
+
+    // Amps label (right of arrow)
+    if(page.amps){
+      s += `<text x="${incX+8}" y="${incTop+18}" font-size="10" font-weight="bold" fill="#000">${esc(page.amps)} A</text>`;
+    }
+
+    // CT (slot reserved at incTop+40) — monochrome
+    let cy = incTop + 40;
+    if(page.ct){
+      s += `<circle cx="${incX}" cy="${cy}" r="${CT_R}" fill="#fff" stroke="#000" stroke-width="1.2"/>`;
+      s += `<circle cx="${incX}" cy="${cy}" r="${CT_R*0.48}" fill="none" stroke="#000" stroke-width="0.8"/>`;
+      s += `<text x="${incX}" y="${cy+3}" text-anchor="middle" font-size="7" font-weight="bold" fill="#000">CT</text>`;
+      s += `<text x="${incX-CT_R-4}" y="${cy+3}" text-anchor="end" font-size="10" font-weight="bold" fill="#000">${esc(page.ct)}</text>`;
+    }
+
+    // Meter (below CT) — monochrome
+    const my = page.ct ? cy + 32 : cy;
+    if(page.meter || page.nmi){
+      s += `<circle cx="${incX}" cy="${my}" r="${M_R}" fill="#fff" stroke="#000" stroke-width="1.5"/>`;
+      s += `<text x="${incX}" y="${my+4}" text-anchor="middle" font-size="9" font-weight="bold" fill="#000">M</text>`;
+      // Vertical labels — anchor just below meter, extend UP through space between meter and bus
+      const labelBaseY = busY - 6;
+      let lx = incX + M_R + 5;
+      if(page.meter){ s += vText(lx, labelBaseY, '#'+String(page.meter).replace(/^#/,''), {fontSize:8, fill:'#000'}); lx += 11; }
+      if(page.nmi){   s += vText(lx, labelBaseY, '#'+String(page.nmi).replace(/^#?NMI/i,''), {fontSize:8, fill:'#000'}); lx += 11; }
+      if(page.rx){    s += vText(lx, labelBaseY, 'Rx='+page.rx, {fontSize:8, fill:'#000'}); }
+    }
+
+    // Phase ticks just above the bus
+    if(page.phases){
+      const ph = parseInt(page.phases)||3;
+      s += phaseTicksV(incX, busY - 18 - ph*2, ph);
+    }
+
+  }
+
+  // ── HORIZONTAL BUSBAR ──
+  s += `<line x1="${busLeft}" y1="${busY}" x2="${busRight}" y2="${busY}" stroke="#000" stroke-width="5"/>`;
+
+  // Boundary band labels above the bus (OUTSIDE EN / INSIDE EN).
+  // Only rendered when circuits on BOTH sides are present — one-sided boards don't need labels
+  // (the subtitle already shows the page-level boundary), and suppressing them also prevents
+  // the label overlapping the incomer drop when all circuits share the same boundary.
+  {
+    const outsideRows = rows.map((r,i)=>r.data.boundary==='outside'?i:-1).filter(i=>i>=0);
+    const insideRows  = rows.map((r,i)=>r.data.boundary==='inside' ?i:-1).filter(i=>i>=0);
+    if(outsideRows.length && insideRows.length){
+      const outMidX = (colCx(outsideRows[0]) + colCx(outsideRows[outsideRows.length-1])) / 2;
+      const inMidX  = (colCx(insideRows[0])  + colCx(insideRows[insideRows.length-1]))  / 2;
+      s += `<text x="${outMidX}" y="${busY-8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#000">OUTSIDE EN</text>`;
+      s += `<text x="${inMidX}"  y="${busY-8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#000">INSIDE EN</text>`;
+    }
+  }
+
+  // Empty page hint
+  if(!rows.length){
+    s += `<text x="${svgW/2}" y="${busY+40}" text-anchor="middle" font-size="12" fill="#999" font-style="italic">No circuits yet — click + Circuit to add</text>`;
+  }
+
+  // ── PER-COLUMN CIRCUIT DROPS ──
+  rows.forEach((row,i)=>{
+    const cx = colCx(i);
+    const isCirc = row.type==='circuit';
+    const c = row.data;
+    const sc = SC[c.status] || SC['Active'];
+    const ph = parseInt(c.phases)||3;
+    const hasCT    = !!c.ct;
+    const hasMeter = isCirc ? c.mtype !== 'none' : true;  // sub-boards always show meter slot if metered
+
+    // Vertical spine (from bus to top of load box)
+    s += `<line x1="${cx}" y1="${busY}" x2="${cx}" y2="${rowSpineBot}" stroke="#111" stroke-width="1.5"/>`;
+
+    // Phase ticks just below bus
+    s += phaseTicksV(cx, busY + ROW_PHASE_Y, ph);
+
+    // Amps label (left of CB)
+    if(c.amps){
+      s += `<text x="${cx-14}" y="${busY+ROW_AMP_Y}" text-anchor="end" font-size="10" font-weight="bold" fill="#000">${esc(c.amps)} A</text>`;
+    }
+
+    // CB box (centred on cx)
+    const cbX = cx - 11;
+    const cbY = busY + ROW_CB_TOP;
+    const cbFill   = isCirc ? sc.fill   : (sc.fill==='#ffffff' ? '#dbeafe' : sc.fill);
+    const cbStroke = isCirc ? sc.stroke : (sc.stroke==='#222'  ? '#1e40af' : sc.stroke);
+    s += `<rect x="${cbX}" y="${cbY}" width="22" height="${ROW_CB_H}" fill="${cbFill}" stroke="${cbStroke}" stroke-width="1.5"/>`;
+    s += `<line x1="${cbX+2}" y1="${cbY+2}" x2="${cbX+20}" y2="${cbY+ROW_CB_H-2}" stroke="${cbStroke}" stroke-width="1.1"/>`;
+    s += `<line x1="${cbX+20}" y1="${cbY+2}" x2="${cbX+2}" y2="${cbY+ROW_CB_H-2}" stroke="${cbStroke}" stroke-width="1.1"/>`;
+
+    // Status badge (e.g. OFF/SPARE) — positioned to the right of CB
+    if(c.status && c.status!=='Active' && sc.badge){
+      s += `<rect x="${cx+14}" y="${cbY+3}" width="40" height="13" fill="${sc.badge}" rx="2"/>`;
+      s += `<text x="${cx+34}" y="${cbY+13}" text-anchor="middle" font-size="8" font-weight="bold" fill="#fff">${esc(c.status)}</text>`;
+    }
+
+    // CT (reserved slot — drawn only if present)
+    if(hasCT){
+      const cty = busY + ROW_CT_CY;
+      s += `<circle cx="${cx}" cy="${cty}" r="${CT_R}" fill="#fff" stroke="#000" stroke-width="1.2"/>`;
+      s += `<circle cx="${cx}" cy="${cty}" r="${CT_R*0.48}" fill="none" stroke="#000" stroke-width="0.8"/>`;
+      s += `<text x="${cx}" y="${cty+3}" text-anchor="middle" font-size="7" font-weight="bold" fill="#000">CT</text>`;
+      // CT ratio label — to the LEFT (horizontal, small) so it doesn't conflict with rotated meter labels
+      s += `<text x="${cx-CT_R-3}" y="${cty+3}" text-anchor="end" font-size="9" font-weight="bold" fill="#000">${esc(c.ct)}</text>`;
+      // KWH reading (if any) — small, also to the LEFT
+      if(c.kwh){
+        s += `<text x="${cx-CT_R-3}" y="${cty+13}" text-anchor="end" font-size="8" fill="#000">R ${esc(c.kwh)} kWh</text>`;
+      }
+    }
+
+    // Meter (reserved slot — drawn only if present)
+    if(hasMeter){
+      const my = busY + ROW_M_CY;
+      s += `<circle cx="${cx}" cy="${my}" r="${M_R}" fill="#fff" stroke="#000" stroke-width="1.5"/>`;
+      s += `<text x="${cx}" y="${my+4}" text-anchor="middle" font-size="9" font-weight="bold" fill="#000">M</text>`;
+      // Vertical labels reading bottom-to-top, starting at right of meter.
+      // Smaller font + larger pitch so adjacent lines have proper clearance and don't visually merge.
+      const labelBaseY = my + M_R + 4;
+      let lx = cx + M_R + 5;
+      const LABEL_PITCH = 11;     // horizontal pitch between rotated label lines
+      const LABEL_FS    = 8;      // font-size of meter/NMI/Rx labels
+      if(isCirc){
+        if(c.meter){ s += vText(lx, labelBaseY, '#'+String(c.meter).replace(/^#/,''), {fontSize:LABEL_FS, fill:'#000'}); lx += LABEL_PITCH; }
+        if(c.nmi){   s += vText(lx, labelBaseY, '#'+String(c.nmi).replace(/^#?NMI/i,''), {fontSize:LABEL_FS, fill:'#000'}); lx += LABEL_PITCH; }
+        if(c.rx){    s += vText(lx, labelBaseY, 'Rx='+c.rx, {fontSize:LABEL_FS, fill:'#000'}); }
+      } else {
+        // sub-board summary — compact, single rotated string
+        const specs=[c.amps?c.amps+' A':null, c.ct?'CT '+c.ct:null].filter(Boolean).join(' | ');
+        if(specs) s += vText(lx, labelBaseY, specs, {fontSize:LABEL_FS, fill:'#000'});
+      }
+    }
+
+    // ── LOAD-NAME BOX (vertical, centred on column) ──
+    // Display rules (per user spec):
+    //   • Circuits  → ShopNumber (line 1) + TenantName (lines 2–3 max).
+    //   • Sub-boards → Sub-board name only (lines 1–3 max).
+    //   • All text inside boxes is plain BLACK — no colour-coded boundary/notes/fx.
+    //   • Box fill is kept light to flag status (OFF/SPARE/VACANT) at-a-glance, but text stays black.
+    //   • Boundary / Fx / Notes / kWh / Status etc. are still editable in the modal and exported to XLSX.
+    const boxW = colW - 28;
+    const boxX = cx - boxW/2;
+    const boxY = busY + ROW_BOX_TOP;
+    const subOffline = !isCirc && c.status && c.status!=='Active';
+    const bFill   = isCirc ? sc.fill   : (subOffline ? sc.fill : '#f5f7fa');   // sub-boards: very pale grey, not blue
+    const bStroke = '#111';                                                     // black border for all boxes
+    const bText   = '#000';                                                     // black text inside all boxes
+    s += `<rect x="${boxX}" y="${boxY}" width="${boxW}" height="${ROW_BOX_H}" fill="${bFill}" stroke="${bStroke}" stroke-width="1.2" style="cursor:pointer" onclick="${isCirc?'editCircuit':'editSub'}('${c.id}')"/>`;
+
+    // Vertical text — stack columns left→right inside box, each reading bottom-to-top
+    const baseY = boxY + ROW_BOX_H - 8;
+    const maxTextHpx = ROW_BOX_H - 16;
+    const linePitch = 13;        // a little more clearance now that text is black-only
+    const MAX_LINES = 3;         // hard cap per user spec
+
+    // Build the lines list (max 3) — ShopNumber then TenantName wrapped to fit
+    const lines = [];
+    const maxChars = Math.floor(maxTextHpx / CW_10);
+    if(isCirc){
+      if(c.shop) lines.push(c.shop);
+      if(c.name){
+        const remaining = MAX_LINES - lines.length;
+        const words = c.name.split(/\s+/);
+        let buf = '';
+        const out = [];
+        words.forEach(w=>{
+          if(!w) return;
+          if(((buf+' '+w).trim()).length <= maxChars){ buf = (buf+' '+w).trim(); }
+          else { if(buf) out.push(buf); buf = w; }
+        });
+        if(buf) out.push(buf);
+        out.slice(0, remaining).forEach(L => lines.push(L));
+      }
+    } else {
+      // Sub-board: name only (also wrap to <=3 lines)
+      if(c.name){
+        const words = c.name.split(/\s+/);
+        let buf = '';
+        const out = [];
+        words.forEach(w=>{
+          if(!w) return;
+          if(((buf+' '+w).trim()).length <= maxChars){ buf = (buf+' '+w).trim(); }
+          else { if(buf) out.push(buf); buf = w; }
+        });
+        if(buf) out.push(buf);
+        out.slice(0, MAX_LINES).forEach(L => lines.push(L));
+      }
+    }
+
+    // Render lines vertically (rotated -90), centred horizontally inside box
+    const totalW = Math.max(1, lines.length) * linePitch;
+    const startLx = (boxW - totalW)/2 + linePitch/2;
+    lines.forEach((L, idx)=>{
+      const lx = startLx + idx*linePitch;
+      s += vText(boxX + lx, baseY, clipText(L, maxTextHpx, 10), {fontSize:10, fontWeight:'bold', fill:bText});
+    });
+  });
+
+  // ── FOOTER (single title block — Site | MSB | Date | By | Rev) ──────────────
+  const fbY = svgH - FT_H;
+  s += `<rect x="0" y="${fbY}" width="${svgW}" height="${FT_H}" fill="#f3f4f6" stroke="#000" stroke-width="0.8"/>`;
+
+  const cols = [
+    {w:0.32, label:'SITE',   val: sld?.name || ''},
+    {w:0.16, label:'MSB',    val: page.name || ''},
+    {w:0.16, label:'REF',    val: sld?.ref  || ''},
+    {w:0.14, label:'DATE',   val: sld?.date || ''},
+    {w:0.12, label:'BY',     val: sld?.by   || ''},
+    {w:0.10, label:'REV',    val: sld?.rev  || ''},
+  ];
+
+  // Pre-compute column edges
+  let edges = [0];
+  cols.forEach(c=>{ edges.push(edges[edges.length-1] + c.w * svgW); });
+
+  // Dividers
+  for(let i=1;i<cols.length;i++){
+    s += `<line x1="${edges[i]}" y1="${fbY}" x2="${edges[i]}" y2="${fbY + 32}" stroke="#000" stroke-width="0.5"/>`;
+  }
+  // Horizontal rule under field row
+  s += `<line x1="0" y1="${fbY + 32}" x2="${svgW}" y2="${fbY + 32}" stroke="#000" stroke-width="0.5"/>`;
+
+  // Field text
+  cols.forEach((c,i)=>{
+    const x = edges[i] + 5;
+    const w = edges[i+1] - edges[i] - 10;
+    s += `<text x="${x}" y="${fbY + 13}" font-size="8" font-weight="bold" fill="#000">${esc(c.label)}</text>`;
+    s += `<text x="${x}" y="${fbY + 27}" font-size="10" font-weight="bold" fill="#000">${esc(clipText(c.val, w, 10))}</text>`;
+  });
+
+  // Caption (below the field row)
+  s += `<text x="${svgW/2}" y="${fbY + 47}" text-anchor="middle" font-size="8" fill="#000">Symbols per AS 1102.101 / IEC 60617 — Australian metering schematic</text>`;
+
+  s += '</svg>';
+  return s;
+}
+
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── MODAL HELPERS ────────────────────────────────────────────────────────────
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+// ─── SLD CRUD ─────────────────────────────────────────────────────────────────
+function openNewSLD(editId){
+  editingId=editId||null;
+  const sld=editId?project.slds.find(s=>s.id===editId):null;
+  document.getElementById('modal-sld-title').textContent=editId?'Edit SLD':'New Single Line Diagram (SLD)';
+  document.getElementById('sld-name').value=sld?.name||'';
+  document.getElementById('sld-desc').value=sld?.desc||'';
+  document.getElementById('sld-ref').value=sld?.ref||'';
+  document.getElementById('sld-date').value=sld?.date||new Date().toISOString().slice(0,10);
+  document.getElementById('sld-by').value=sld?.by||'';
+  document.getElementById('sld-rev').value=sld?.rev||'Rev A';
+  document.getElementById('btn-delete-sld').style.display=editId?'':'none';
+  openModal('modal-sld');
+  setTimeout(()=>document.getElementById('sld-name').focus(),100);
+}
+function saveSLD(){
+  const name=document.getElementById('sld-name').value.trim();
+  if(!name){alert('Please enter a site name.');return;}
+  if(editingId){
+    const sld=project.slds.find(s=>s.id===editingId);
+    if(sld){sld.name=name;sld.desc=document.getElementById('sld-desc').value.trim();sld.ref=document.getElementById('sld-ref').value.trim();sld.date=document.getElementById('sld-date').value;sld.by=document.getElementById('sld-by').value.trim();sld.rev=document.getElementById('sld-rev').value.trim();}
+  } else {
+    const sld={id:uid(),name,desc:document.getElementById('sld-desc').value.trim(),ref:document.getElementById('sld-ref').value.trim(),date:document.getElementById('sld-date').value,by:document.getElementById('sld-by').value.trim(),rev:document.getElementById('sld-rev').value.trim(),pages:[]};
+    project.slds.push(sld);
+    selectedSLDId=sld.id;
+  }
+  closeModal('modal-sld');renderSidebar();renderCanvas();
+}
+function deleteCurrentSLD(){
+  if(!editingId)return;
+  if(!confirm('Delete this entire SLD and all its pages/circuits?'))return;
+  project.slds=project.slds.filter(s=>s.id!==editingId);
+  if(selectedSLDId===editingId){selectedSLDId=null;selectedPageId=null;}
+  closeModal('modal-sld');renderSidebar();renderCanvas();
+}
+
+// ─── PAGE CRUD ────────────────────────────────────────────────────────────────
+function openNewPage(sldId,editPageId){
+  if(sldId) selectedSLDId=sldId;
+  if(!selectedSLDId){alert('Please select or create an SLD first.');openNewSLD();return;}
+  editingId=editPageId||null;
+  const page=editPageId?(project.slds.find(s=>s.id===selectedSLDId)?.pages||[]).find(p=>p.id===editPageId):null;
+  document.getElementById('modal-page-title').textContent=editPageId?'Edit MSB / Page':'Add New Page / MSB';
+  document.getElementById('page-name').value=page?.name||'';
+  document.getElementById('page-desc').value=page?.desc||'';
+  document.getElementById('page-amps').value=page?.amps||'';
+  document.getElementById('page-phases').value=page?.phases||'3';
+  document.getElementById('page-ct').value=page?.ct||'';
+  document.getElementById('page-meter').value=page?.meter||'';
+  document.getElementById('page-nmi').value=page?.nmi||'';
+  document.getElementById('page-rx').value=page?.rx||'';
+  document.getElementById('page-bustype').value=page?.bustype||'solid';
+  document.getElementById('page-boundary').value=page?.boundary||'';
+  document.getElementById('page-notes').value=page?.notes||'';
+  document.getElementById('btn-delete-page').style.display=editPageId?'':'none';
+  openModal('modal-page');
+  setTimeout(()=>document.getElementById('page-name').focus(),100);
+}
+function savePage(){
+  const name=document.getElementById('page-name').value.trim();
+  if(!name){alert('Please enter a page/MSB name.');return;}
+  const sld=project.slds.find(s=>s.id===selectedSLDId);
+  if(!sld)return;
+  const data={name,desc:document.getElementById('page-desc').value.trim(),amps:document.getElementById('page-amps').value.trim(),phases:document.getElementById('page-phases').value,ct:document.getElementById('page-ct').value.trim(),meter:document.getElementById('page-meter').value.trim(),nmi:document.getElementById('page-nmi').value.trim(),rx:document.getElementById('page-rx').value.trim(),bustype:document.getElementById('page-bustype').value,boundary:document.getElementById('page-boundary').value,notes:document.getElementById('page-notes').value.trim()};
+  if(editingId){
+    const page=sld.pages.find(p=>p.id===editingId);
+    if(page) Object.assign(page,data);
+  } else {
+    const page={id:uid(),...data,circuits:[],subBoards:[]};
+    sld.pages.push(page);
+    selectedPageId=page.id;
+  }
+  closeModal('modal-page');renderSidebar();renderCanvas();
+}
+function deleteCurrentPage(){
+  if(!editingId||!selectedSLDId)return;
+  if(!confirm('Delete this page and all its circuits?'))return;
+  const sld=project.slds.find(s=>s.id===selectedSLDId);
+  if(!sld)return;
+  sld.pages=sld.pages.filter(p=>p.id!==editingId);
+  if(selectedPageId===editingId) selectedPageId=sld.pages[0]?.id||null;
+  closeModal('modal-page');renderSidebar();renderCanvas();
+}
+function editCurrentMSB(){ if(selectedPageId) openNewPage(selectedSLDId,selectedPageId); }
+
+// ─── CIRCUIT CRUD ─────────────────────────────────────────────────────────────
+function openAddCircuit(){
+  if(!selectedPageId){alert('Please select an MSB first.');return;}
+  editingId=null;
+  document.getElementById('modal-circuit-title').textContent='Add Circuit';
+  document.getElementById('btn-delete-circuit').style.display='none';
+  ['c-amps','c-ct','c-rx','c-meter','c-nmi','c-kwh','c-fx','c-shop','c-name','c-notes','c-section'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('c-phases').value='3';
+  document.getElementById('c-status').value='Active';
+  document.getElementById('c-mtype').value='metered';
+  document.getElementById('c-boundary').value='';
+  // Pre-fill section with "A" if MSB has split bus
+  const page = getCurrentPage();
+  if(page && page.bustype==='split') document.getElementById('c-section').value='A';
+  openModal('modal-circuit');
+  setTimeout(()=>document.getElementById('c-amps').focus(),100);
+}
+function editCircuit(cid){
+  const page=getCurrentPage();if(!page)return;
+  const c=page.circuits.find(x=>x.id===cid);if(!c)return;
+  editingId=cid;
+  document.getElementById('modal-circuit-title').textContent='Edit Circuit';
+  document.getElementById('btn-delete-circuit').style.display='';
+  document.getElementById('c-amps').value=c.amps||'';
+  document.getElementById('c-phases').value=c.phases||'3';
+  document.getElementById('c-ct').value=c.ct||'';
+  document.getElementById('c-rx').value=c.rx||'';
+  document.getElementById('c-meter').value=c.meter||'';
+  document.getElementById('c-nmi').value=c.nmi||'';
+  document.getElementById('c-kwh').value=c.kwh||'';
+  document.getElementById('c-fx').value=c.fx||'';
+  document.getElementById('c-shop').value=c.shop||'';
+  document.getElementById('c-name').value=c.name||'';
+  document.getElementById('c-status').value=c.status||'Active';
+  // backwards-compat: convert legacy "3ph" / "1ph" / "2ph" → "metered"
+  let mt = c.mtype || 'metered';
+  if(mt==='3ph'||mt==='1ph'||mt==='2ph') mt='metered';
+  document.getElementById('c-mtype').value=mt;
+  document.getElementById('c-boundary').value=c.boundary||'';
+  document.getElementById('c-section').value=c.section||'';
+  document.getElementById('c-notes').value=c.notes||'';
+  openModal('modal-circuit');
+}
+function saveCircuit(){
+  const page=getCurrentPage();if(!page)return;
+  const data={
+    amps:document.getElementById('c-amps').value.trim(),
+    phases:document.getElementById('c-phases').value,
+    ct:document.getElementById('c-ct').value.trim(),
+    rx:document.getElementById('c-rx').value.trim(),
+    meter:document.getElementById('c-meter').value.trim(),
+    nmi:document.getElementById('c-nmi').value.trim(),
+    kwh:document.getElementById('c-kwh').value.trim(),
+    fx:document.getElementById('c-fx').value.trim(),
+    shop:document.getElementById('c-shop').value.trim(),
+    name:document.getElementById('c-name').value.trim(),
+    status:document.getElementById('c-status').value,
+    mtype:document.getElementById('c-mtype').value,
+    boundary:document.getElementById('c-boundary').value,
+    section:document.getElementById('c-section').value.trim().toUpperCase(),
+    notes:document.getElementById('c-notes').value.trim()
+  };
+  if(editingId){const c=page.circuits.find(x=>x.id===editingId);if(c)Object.assign(c,data);}
+  else page.circuits.push({id:uid(),...data});
+  closeModal('modal-circuit');renderCanvas();
+}
+function deleteCurrentCircuit(){
+  const page=getCurrentPage();if(!page||!editingId)return;
+  if(!confirm('Delete this circuit?'))return;
+  page.circuits=page.circuits.filter(c=>c.id!==editingId);
+  closeModal('modal-circuit');renderCanvas();
+}
+
+// ─── SUB-BOARD CRUD ───────────────────────────────────────────────────────────
+function openAddSubBoard(){
+  if(!selectedPageId){alert('Please select an MSB first.');return;}
+  editingId=null;
+  document.getElementById('modal-sub-title').textContent='Add Sub-Board / Feeder Set';
+  document.getElementById('btn-delete-sub').style.display='none';
+  ['sub-name','sub-amps','sub-ct','sub-shops','sub-notes','sub-section'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('sub-phases').value='3';
+  document.getElementById('sub-status').value='Active';
+  const page = getCurrentPage();
+  if(page && page.bustype==='split') document.getElementById('sub-section').value='A';
+  openModal('modal-sub');
+  setTimeout(()=>document.getElementById('sub-name').focus(),100);
+}
+function editSub(subId){
+  const page=getCurrentPage();if(!page)return;
+  const sb=page.subBoards.find(x=>x.id===subId);if(!sb)return;
+  editingId=subId;
+  document.getElementById('modal-sub-title').textContent='Edit Sub-Board';
+  document.getElementById('btn-delete-sub').style.display='';
+  document.getElementById('sub-name').value=sb.name||'';
+  document.getElementById('sub-amps').value=sb.amps||'';
+  document.getElementById('sub-ct').value=sb.ct||'';
+  document.getElementById('sub-phases').value=sb.phases||'3';
+  document.getElementById('sub-section').value=sb.section||'';
+  document.getElementById('sub-status').value=sb.status||'Active';
+  document.getElementById('sub-shops').value=sb.shops||'';
+  document.getElementById('sub-notes').value=sb.notes||'';
+  openModal('modal-sub');
+}
+function saveSub(){
+  const page=getCurrentPage();if(!page)return;
+  const name=document.getElementById('sub-name').value.trim();
+  if(!name){alert('Please enter a sub-board name.');return;}
+  const data={
+    name,
+    amps:document.getElementById('sub-amps').value.trim(),
+    ct:document.getElementById('sub-ct').value.trim(),
+    phases:document.getElementById('sub-phases').value,
+    section:document.getElementById('sub-section').value.trim().toUpperCase(),
+    status:document.getElementById('sub-status').value,
+    shops:document.getElementById('sub-shops').value.trim(),
+    notes:document.getElementById('sub-notes').value.trim()
+  };
+  if(editingId){const sb=page.subBoards.find(x=>x.id===editingId);if(sb)Object.assign(sb,data);}
+  else page.subBoards.push({id:uid(),...data});
+  closeModal('modal-sub');renderCanvas();
+}
+function deleteCurrentSub(){
+  const page=getCurrentPage();if(!page||!editingId)return;
+  if(!confirm('Delete this sub-board?'))return;
+  page.subBoards=page.subBoards.filter(s=>s.id!==editingId);
+  closeModal('modal-sub');renderCanvas();
+}
+function getCurrentPage(){
+  if(!selectedSLDId||!selectedPageId)return null;
+  const sld=project.slds.find(s=>s.id===selectedSLDId);
+  return sld?sld.pages.find(p=>p.id===selectedPageId):null;
+}
+
+// ─── CONTEXT MENU ─────────────────────────────────────────────────────────────
+let ctxType=null,ctxItemId=null,ctxSldId=null;
+function showCtx(e,type,itemId,sldId){
+  e.preventDefault();e.stopPropagation();
+  ctxType=type;ctxItemId=itemId;ctxSldId=sldId||selectedSLDId;
+  const menu=document.getElementById('ctx-menu');
+  menu.style.left=e.clientX+'px';menu.style.top=e.clientY+'px';
+  menu.classList.add('open');
+  document.getElementById('ctx-addcircuit').style.display=type==='page'?'':'none';
+  document.getElementById('ctx-addsub').style.display=type==='page'?'':'none';
+}
+document.addEventListener('click',()=>document.getElementById('ctx-menu').classList.remove('open'));
+document.getElementById('ctx-edit').onclick=()=>{
+  if(ctxType==='sld') openNewSLD(ctxItemId);
+  else if(ctxType==='page'){selectedSLDId=ctxSldId;openNewPage(ctxSldId,ctxItemId);}
+};
+document.getElementById('ctx-addcircuit').onclick=()=>{selectedSLDId=ctxSldId;selectedPageId=ctxItemId;openAddCircuit();};
+document.getElementById('ctx-addsub').onclick=()=>{selectedSLDId=ctxSldId;selectedPageId=ctxItemId;openAddSubBoard();};
+document.getElementById('ctx-delete').onclick=()=>{
+  if(ctxType==='sld'){
+    if(!confirm('Delete this SLD?'))return;
+    project.slds=project.slds.filter(s=>s.id!==ctxItemId);
+    if(selectedSLDId===ctxItemId){selectedSLDId=null;selectedPageId=null;}
+    renderSidebar();renderCanvas();
+  } else if(ctxType==='page'){
+    if(!confirm('Delete this page?'))return;
+    const sld=project.slds.find(s=>s.id===ctxSldId);
+    if(sld) sld.pages=sld.pages.filter(p=>p.id!==ctxItemId);
+    if(selectedPageId===ctxItemId) selectedPageId=null;
+    renderSidebar();renderCanvas();
+  }
+};
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    ['modal-sld','modal-page','modal-circuit','modal-sub'].forEach(closeModal);
+    document.getElementById('ctx-menu').classList.remove('open');
+  }
+});
+
+// ─── IMPORT / EXPORT ──────────────────────────────────────────────────────────
+function exportExcel(){
+  if(!selectedSLDId){alert('Please select an SLD to export.');return;}
+  const sld=project.slds.find(s=>s.id===selectedSLDId);if(!sld)return;
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Field','Value'],['Site Name',sld.name],['Address',sld.desc||''],['Drawing Ref',sld.ref||''],['Date',sld.date||''],['Prepared By',sld.by||''],['Revision',sld.rev||'']]),'DrawingInfo');
+  const pagesData=[['PageNumber','PageName','Description','Amps','Phases','CTRatio','IncomerMeter','IncomerNMI','IncomerRx','BusType','Boundary','Notes']];
+  sld.pages.forEach((p,i)=>pagesData.push([i+1,p.name,p.desc||'',p.amps||'',p.phases||'',p.ct||'',p.meter||'',p.nmi||'',p.rx||'',p.bustype||'',p.boundary||'',p.notes||'']));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(pagesData),'Pages');
+  const circData=[['PageNumber','PageName','BusSection','CBSize_A','Phases','CTRatio','Rx','MeterSerial','NMI','kWh','Fx','ShopNumber','TenantName','Status','MeterType','Boundary','Notes']];
+  sld.pages.forEach((p,i)=>(p.circuits||[]).forEach(c=>circData.push([i+1,p.name,c.section||'',c.amps||'',c.phases||'',c.ct||'',c.rx||'',c.meter||'',c.nmi||'',c.kwh||'',c.fx||'',c.shop||'',c.name||'',c.status||'Active',c.mtype||'metered',c.boundary||'',c.notes||''])));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(circData),'Circuits');
+  const subData=[['PageNumber','PageName','BusSection','SubBoardName','Amps','Phases','CTRatio','Status','Shops','Notes']];
+  sld.pages.forEach((p,i)=>(p.subBoards||[]).forEach(sb=>subData.push([i+1,p.name,sb.section||'',sb.name||'',sb.amps||'',sb.phases||'',sb.ct||'',sb.status||'Active',sb.shops||'',sb.notes||''])));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(subData),'SubBoards');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['SLD Metering Schematic Builder — Import Format'],
+    [''],
+    ['SHEETS: DrawingInfo | Pages | Circuits | SubBoards'],
+    [''],
+    ['CIRCUIT FIELDS:'],
+    ['BusSection','A, B, 1, 2 ... (used when MSB BusType = split)'],
+    ['CBSize_A','Breaker rating e.g. 100, 200, 63'],
+    ['Phases','1, 2, or 3'],
+    ['CTRatio','e.g. 200/5 — blank if no CT'],
+    ['Rx','Multiplier e.g. 40, 1, 300'],
+    ['MeterSerial','e.g. SAM000025253'],
+    ['NMI','e.g. NMI7263901874'],
+    ['kWh','Reading e.g. 2315.7'],
+    ['Fx','Feeder ref e.g. CFS-1'],
+    ['ShopNumber','e.g. T-101, K-103'],
+    ['TenantName','e.g. Woolworths'],
+    ['Status','Active|OFF|VACANT|DISCONNECTED|NO LOAD|SPARE|TO VERIFY'],
+    ['MeterType','metered|none  (legacy "3ph","1ph","2ph" auto-converted on import)'],
+    ['Boundary','inside|outside']
+  ]),'Instructions');
+  XLSX.writeFile(wb,(sld.name||'SLD').replace(/[^a-z0-9]/gi,'_')+'_Schematic.xlsx');
+}
+function importExcelClick(){document.getElementById('excelFile').click();}
+function importExcel(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=evt=>{
+    try{
+      const wb=XLSX.read(evt.target.result,{type:'binary'});
+      const infoSheet=wb.Sheets['DrawingInfo'];
+      const infoRows=infoSheet?XLSX.utils.sheet_to_json(infoSheet,{header:1}):[];
+      const info={};infoRows.forEach(r=>{if(r[0]&&r[1])info[r[0]]=r[1];});
+      const pagesSheet=wb.Sheets['Pages'];
+      const pagesRows=pagesSheet?XLSX.utils.sheet_to_json(pagesSheet):[];
+      const pageMap={};
+      const pages=pagesRows.map(r=>{
+        const pg={id:uid(),name:r.PageName||'MSB',desc:r.Description||'',amps:String(r.Amps||''),phases:String(r.Phases||'3'),ct:r.CTRatio||'',meter:r.IncomerMeter||'',nmi:r.IncomerNMI||'',rx:String(r.IncomerRx||''),bustype:r.BusType||'solid',boundary:r.Boundary||'',notes:r.Notes||'',circuits:[],subBoards:[]};
+        pageMap[r.PageNumber]=pg.id;return pg;
+      });
+      const circRows=wb.Sheets['Circuits']?XLSX.utils.sheet_to_json(wb.Sheets['Circuits']):[];
+      circRows.forEach(r=>{
+        const pg=pages.find(p=>p.id===pageMap[r.PageNumber]);if(!pg)return;
+        // Convert legacy mtype values
+        let mt = r.MeterType || 'metered';
+        if(mt==='3ph'||mt==='1ph'||mt==='2ph') mt='metered';
+        pg.circuits.push({
+          id:uid(),
+          amps:String(r.CBSize_A||''),
+          phases:String(r.Phases||'3'),
+          ct:r.CTRatio||'',
+          rx:String(r.Rx||''),
+          meter:r.MeterSerial||'',
+          nmi:r.NMI||'',
+          kwh:String(r.kWh||''),
+          fx:r.Fx||'',
+          shop:r.ShopNumber||'',
+          name:r.TenantName||'',
+          status:r.Status||'Active',
+          mtype:mt,
+          boundary:r.Boundary||'',
+          section:(r.BusSection||'').toString().toUpperCase().trim(),
+          notes:r.Notes||''
+        });
+      });
+      const subRows=wb.Sheets['SubBoards']?XLSX.utils.sheet_to_json(wb.Sheets['SubBoards']):[];
+      subRows.forEach(r=>{
+        const pg=pages.find(p=>p.id===pageMap[r.PageNumber]);if(!pg)return;
+        pg.subBoards.push({
+          id:uid(),
+          name:r.SubBoardName||'',
+          amps:String(r.Amps||''),
+          phases:String(r.Phases||'3'),
+          ct:r.CTRatio||'',
+          status:r.Status||'Active',
+          section:(r.BusSection||'').toString().toUpperCase().trim(),
+          shops:r.Shops||'',
+          notes:r.Notes||''
+        });
+      });
+      const sld={id:uid(),name:info['Site Name']||file.name.replace(/\.xlsx?$/i,''),desc:info['Address']||'',ref:info['Drawing Ref']||'',date:info['Date']||'',by:info['Prepared By']||'',rev:info['Revision']||'',pages};
+      project.slds.push(sld);
+      selectedSLDId=sld.id;selectedPageId=pages[0]?.id||null;
+      renderSidebar();renderCanvas();
+      alert(`Imported: ${sld.name}\n${pages.length} pages, ${circRows.length} circuits`);
+    }catch(err){alert('Import error: '+err.message);}
+  };
+  reader.readAsBinaryString(file);e.target.value='';
+}
+function saveProject(){
+  const json=JSON.stringify(project,null,2);
+  const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(json);
+  a.download=(project.name||'sld_project').replace(/[^a-z0-9]/gi,'_')+'.json';a.click();
+}
+function loadProjectClick(){document.getElementById('jsonFile').click();}
+function loadProject(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=evt=>{
+    try{
+      project=JSON.parse(evt.target.result);
+      // backwards-compat sweep
+      (project.slds||[]).forEach(s=>(s.pages||[]).forEach(p=>{
+        (p.circuits||[]).forEach(c=>{
+          if(c.mtype==='3ph'||c.mtype==='1ph'||c.mtype==='2ph') c.mtype='metered';
+          if(c.section) c.section = String(c.section).toUpperCase().trim();
+        });
+        (p.subBoards||[]).forEach(sb=>{
+          if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
+        });
+      }));
+      selectedSLDId=project.slds[0]?.id||null;
+      selectedPageId=project.slds[0]?.pages[0]?.id||null;
+      renderSidebar();renderCanvas();
+    }catch(err){alert('Load error: '+err.message);}
+  };
+  reader.readAsText(file);e.target.value='';
+}
+
+// ─── PRINT ────────────────────────────────────────────────────────────────────
+// Common print stylesheet for printCurrent/printAll new windows.
+// A3 landscape gives ~410 × 287 mm printable area which suits ~10 circuits per row at 100% scale.
+function _printStyles(siteName){
+  return `
+    @page { size: A3 landscape; margin: 8mm; }
+    @media print { @page { size: A3 landscape; margin: 8mm; } }
+    html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}
+    .page{page-break-after:always;padding:0;margin:0;width:100%;display:flex;align-items:center;justify-content:center}
+    .page:last-child{page-break-after:auto}
+    .page svg{display:block;max-width:100%;max-height:195mm;width:auto;height:auto}
+    /* Hide any URL/title that the browser would print as headers/footers — users still need to
+       set "Headers and Footers" OFF in the print dialog (Chrome/Edge) for a fully clean output. */
+    .print-hint{position:fixed;top:0;left:0;right:0;background:#fff8c5;border-bottom:1px solid #d4a72c;
+                padding:8px 14px;font-size:13px;color:#7a5d00;z-index:9999;text-align:center}
+    @media print { .print-hint { display:none } }
+  `;
+}
+
+function printCurrent(){
+  if(!selectedPageId){alert('Select a page first.');return;}
+  const sld=project.slds.find(s=>s.id===selectedSLDId);
+  const page=sld&&sld.pages.find(p=>p.id===selectedPageId);
+  if(!page)return;
+  _openPrintWindow(sld, [page]);
+}
+
+function printAll(){
+  if(!selectedSLDId){alert('Select an SLD first.');return;}
+  const sld=project.slds.find(s=>s.id===selectedSLDId);if(!sld)return;
+  _openPrintWindow(sld, sld.pages);
+}
+
+function _openPrintWindow(sld, pages){
+  const css = _printStyles(sld?.name || '');
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(sld?.name || 'Schematic')}</title><style>${css}</style></head><body>`;
+  html += `<div class="print-hint">Tip: in the print dialog, choose <b>A3 / Landscape</b> and turn <b>Headers and footers OFF</b> for a clean output. Click anywhere to start printing.</div>`;
+  pages.forEach(pg => { html += `<div class="page">${buildSchematicSVG(pg, sld)}</div>`; });
+  html += `<script>document.addEventListener('click',()=>window.print());window.addEventListener('load',()=>setTimeout(()=>window.print(),400));<\/script>`;
+  html += `</body></html>`;
+  const win = window.open('', '_blank');
+  if(!win){ alert('Pop-up blocked — please allow pop-ups for this page.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+renderSidebar();renderCanvas();
+</script>
+</body>
+</html>
