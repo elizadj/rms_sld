@@ -4,6 +4,31 @@ Short summaries of each working session. Newest first. Keep entries brief — li
 
 ---
 
+## 2026-05-11 — RMS brand theme applied to UI + SLD diagram
+
+Changes made to [sld_builder.html](../sld_builder.html):
+
+- **App UI:** Navy toolbar `#232C63`, RMS blue primary buttons `#35679E`, pink lightning bolt logo icon `#CC3366`, Montserrat for headings/modal titles, Varela Round body font, Google Fonts loaded via `<link>`. Active sidebar items in navy with navy left border. Modal overlay `rgba(35,44,99,.45)`, modal h2 with pink bottom border.
+- **SLD diagram — title bar:** Navy `#232C63` background, white title text, muted blue-grey subtitle text `#c8d0e7`.
+- **SLD diagram — footer/title block:** Navy `#232C63` background, white field values, muted `#c8d0e7` field labels and AS 1102.101 caption.
+- **SLD diagram — busbar:** Changed from black `#000` to navy `#232C63`.
+- **SLD diagram — circuit spine lines:** Navy `#232C63` (was `#111`).
+- **SLD diagram — load-name box borders:** Navy `#232C63` (was `#111`).
+- **SLD diagram — sub-board boxes:** RMS navy-tinted fill `#eef0f7` (was plain grey `#f5f7fa`).
+- **SLD diagram — CB status stroke:** All status rows now use navy `#232C63` border.
+- **SLD diagram — sub-board CB:** Light RMS blue fill `#c8d9ef` + RMS medium blue stroke `#35679E`.
+- **SLD diagram — EN zone labels:** RMS blue `#35679E` (was black).
+- **SLD diagram — incomer arrow + wire:** Navy `#232C63` (was `#111`).
+- **SLD diagram — NOTE band:** RMS `#eef0f7` tint background, navy NOTE: label.
+- **SLD diagram — font family:** Changed SVG `font-family` to `'Varela Round',Arial,sans-serif`.
+- Technical symbols (CT circles, meter circles, phase ticks) remain black per AS 1102.101.
+
+Playwright re-test confirmed: all 9 pages at 100% print scale, no regressions.
+
+Commit: `685e400` — pushed to `main`.
+
+---
+
 ## 2026-05-11 — Bug fixes (all 4 from Playwright inspection)
 
 Changes made to [sld_builder.html](../sld_builder.html):
