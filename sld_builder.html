@@ -5,47 +5,52 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SLD Metering Schematic Builder</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Varela+Round&display=swap" rel="stylesheet">
 <style>
-/* ─── PROFESSIONAL ENGINEERING UI — neutral greys, single muted accent ─────── */
+/* ─── RMS / METRONOMIC BRAND THEME ──────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:          #ffffff;
-  --bg-alt:      #f5f6f7;        /* light grey for canvas background */
+  --bg-alt:      #eef0f7;        /* light navy-tinted canvas background */
   --bg-panel:    #fafafa;        /* sidebar / panels */
-  --border:      #d1d5db;        /* neutral mid-grey borders */
+  --border:      #d1d5db;
   --border-soft: #e5e7eb;
-  --text:        #1f2937;        /* near-black for body text */
+  --text:        #333333;        /* RMS body text */
   --text-muted:  #6b7280;
   --text-faint:  #9ca3af;
-  --accent:      #334155;        /* slate — single accent for primary actions */
-  --accent-hover:#1e293b;
+  --accent:      #232C63;        /* RMS navy — primary brand colour */
+  --accent-hover:#1a2050;        /* deeper navy for hover */
+  --accent-mid:  #35679E;        /* RMS medium blue — secondary actions */
+  --accent-pink: #CC3366;        /* RMS pink — lightning bolt / highlight */
   --accent-text: #ffffff;
-  --row-active:  #e5e7eb;
+  --row-active:  #e8eaf5;        /* very light navy tint for row hovers */
   --shadow:      0 1px 3px rgba(0,0,0,.08);
 }
-body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--text);background:var(--bg);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;font-size:13px;color:var(--text);background:var(--bg);display:flex;flex-direction:column;height:100vh;overflow:hidden}
 
-/* Top toolbar — slim charcoal bar, monochrome buttons */
-#toolbar{background:#1f2937;color:#e5e7eb;padding:0 14px;height:42px;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:nowrap;border-bottom:1px solid #111827}
-#toolbar .logo{font-weight:600;font-size:14px;color:#f9fafb;margin-right:14px;white-space:nowrap;letter-spacing:.2px}
-#toolbar .logo::before{content:"";display:inline-block;width:14px;height:14px;background:#94a3b8;clip-path:polygon(40% 0,100% 0,60% 45%,100% 45%,0 100%,40% 55%,0 55%);margin-right:8px;vertical-align:-2px}
-.tbtn{background:transparent;color:#e5e7eb;border:1px solid transparent;padding:5px 11px;border-radius:3px;cursor:pointer;font-size:12px;white-space:nowrap;font-family:inherit;line-height:1.4}
-.tbtn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15)}
-.tbtn.primary{background:#475569;border-color:#475569;color:#fff}
-.tbtn.primary:hover{background:#334155;border-color:#334155}
-.tbtn.danger{color:#fecaca}
-.tbtn.danger:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#fff}
+/* Top toolbar — RMS navy */
+#toolbar{background:#232C63;color:#e5e7eb;padding:0 14px;height:44px;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:nowrap;border-bottom:2px solid #1a2050}
+#toolbar .logo{font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;color:#ffffff;margin-right:14px;white-space:nowrap;letter-spacing:.4px}
+#toolbar .logo::before{content:"";display:inline-block;width:14px;height:14px;background:#CC3366;clip-path:polygon(40% 0,100% 0,60% 45%,100% 45%,0 100%,40% 55%,0 55%);margin-right:8px;vertical-align:-2px}
+.tbtn{background:transparent;color:#cdd3f0;border:1px solid transparent;padding:5px 11px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap;font-family:inherit;line-height:1.4}
+.tbtn:hover{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.20);color:#fff}
+.tbtn.primary{background:#35679E;border-color:#35679E;color:#fff}
+.tbtn.primary:hover{background:#2a5585;border-color:#2a5585}
+.tbtn.danger{color:#fca5a5}
+.tbtn.danger:hover{background:rgba(204,51,102,.2);border-color:rgba(204,51,102,.5);color:#fff}
 .tbtn.success{color:#bbf7d0}
 .tbtn.success:hover{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.3);color:#fff}
-#toolbar .sep{width:1px;height:20px;background:#374151;margin:0 4px}
+#toolbar .sep{width:1px;height:20px;background:rgba(255,255,255,.15);margin:0 4px}
 
 #main{display:flex;flex:1;overflow:hidden;background:var(--bg-alt)}
 
-/* Sidebar — clean white panel with neutral text */
+/* Sidebar — white panel with navy accent on active page */
 #sidebar{width:260px;min-width:260px;background:var(--bg-panel);color:var(--text);display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
-#sidebar-header{padding:10px 14px;background:var(--bg-panel);font-weight:600;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between}
+#sidebar-header{padding:10px 14px;background:var(--bg-panel);font-family:'Montserrat',sans-serif;font-weight:600;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.7px;border-bottom:1px solid var(--border-soft);display:flex;align-items:center;justify-content:space-between}
 #sidebar-header .tbtn{color:var(--text);border:1px solid var(--border)}
-#sidebar-header .tbtn:hover{background:var(--row-active);border-color:var(--border)}
+#sidebar-header .tbtn:hover{background:var(--row-active);border-color:var(--accent-mid)}
 #sidebar-tree{flex:1;overflow-y:auto;padding:4px 0}
 .tree-sld{margin-bottom:2px}
 .tree-sld-name{padding:7px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text);font-weight:600;font-size:12px;user-select:none;letter-spacing:.2px}
@@ -54,38 +59,38 @@ body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;font-size:13px;col
 .tree-page{margin-left:0}
 .tree-page-name{padding:5px 12px 5px 30px;cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--text);font-size:12px;border-left:3px solid transparent}
 .tree-page-name:hover{background:var(--row-active)}
-.tree-page-name.active{background:var(--row-active);border-left-color:var(--accent);font-weight:600}
+.tree-page-name.active{background:var(--row-active);border-left-color:var(--accent);font-weight:600;color:var(--accent)}
 .tree-page-name span:last-child{color:var(--text-muted);font-size:11px;margin-left:auto;font-weight:400}
 .tree-add{margin-left:30px;padding:4px 6px;font-size:11px;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
-.tree-add:hover{color:var(--accent)}
+.tree-add:hover{color:var(--accent-mid)}
 
 #canvas-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 #canvas-toolbar{background:var(--bg);border-bottom:1px solid var(--border-soft);padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0}
-#canvas-title{font-weight:600;font-size:13px;color:var(--text);margin-right:8px}
-.cbtn{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 11px;border-radius:3px;cursor:pointer;font-size:12px;font-family:inherit}
-.cbtn:hover{background:var(--row-active);border-color:var(--border)}
+#canvas-title{font-family:'Montserrat',sans-serif;font-weight:600;font-size:13px;color:var(--accent);margin-right:8px}
+.cbtn{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 11px;border-radius:4px;cursor:pointer;font-size:12px;font-family:inherit}
+.cbtn:hover{background:var(--row-active);border-color:var(--accent-mid);color:var(--accent)}
 .cbtn.green{background:var(--bg);border:1px solid var(--border);color:var(--text)}
 .cbtn.green:hover{background:var(--row-active)}
 
-#canvas-scroll{flex:1;overflow:auto;background:#e7e9eb;padding:20px}
+#canvas-scroll{flex:1;overflow:auto;background:#e2e5f0;padding:20px}
 #canvas-scroll.empty{display:flex;align-items:center;justify-content:center;background:var(--bg-alt)}
-.schematic-wrap{background:#fff;border:1px solid #9ca3af;box-shadow:var(--shadow);display:inline-block;min-width:min-content}
+.schematic-wrap{background:#fff;border:1px solid #b0b8d8;box-shadow:0 2px 8px rgba(35,44,99,.10);display:inline-block;min-width:min-content}
 .schematic-svg{display:block}
 
-/* Modals — neutral whites/greys */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(17,24,39,.5);z-index:1000;align-items:center;justify-content:center}
+/* Modals */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(35,44,99,.45);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:#fff;border-radius:4px;padding:22px 26px;min-width:480px;max-width:680px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 10px 30px rgba(0,0,0,.2);border:1px solid var(--border)}
-.modal h2{font-size:14px;color:var(--text);margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border-soft);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.modal{background:#fff;border-radius:6px;padding:22px 26px;min-width:480px;max-width:680px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(35,44,99,.25);border:1px solid var(--border)}
+.modal h2{font-family:'Montserrat',sans-serif;font-size:13px;color:var(--accent);margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid var(--accent-pink);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group.full{grid-column:1/-1}
 .form-group label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
-.form-group input,.form-group select,.form-group textarea{border:1px solid var(--border);border-radius:3px;padding:7px 10px;font-size:13px;color:var(--text);background:#fff;font-family:inherit}
-.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(51,65,85,.15)}
+.form-group input,.form-group select,.form-group textarea{border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-size:13px;color:var(--text);background:#fff;font-family:inherit}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent-mid);box-shadow:0 0 0 2px rgba(35,44,99,.12)}
 .form-group .hint{font-size:10px;color:var(--text-faint);margin-top:2px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:22px;padding-top:14px;border-top:1px solid var(--border-soft)}
-.modal-actions button{padding:7px 18px;border-radius:3px;cursor:pointer;font-size:12px;border:1px solid var(--border);font-family:inherit;font-weight:500}
+.modal-actions button{padding:7px 18px;border-radius:4px;cursor:pointer;font-size:12px;border:1px solid var(--border);font-family:inherit;font-weight:600}
 .modal-actions .btn-save{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
 .modal-actions .btn-save:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
 .modal-actions .btn-cancel{background:#fff;color:var(--text)}
@@ -94,15 +99,15 @@ body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;font-size:13px;col
 .modal-actions .btn-delete:hover{background:#fef2f2;border-color:#fca5a5}
 
 /* Context menu */
-.ctx-menu{display:none;position:fixed;background:#fff;border:1px solid var(--border);border-radius:3px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:2000;min-width:160px}
+.ctx-menu{display:none;position:fixed;background:#fff;border:1px solid var(--border);border-radius:4px;box-shadow:0 4px 20px rgba(35,44,99,.18);z-index:2000;min-width:160px}
 .ctx-menu.open{display:block}
 .ctx-item{padding:8px 14px;cursor:pointer;font-size:12px;color:var(--text)}
-.ctx-item:hover{background:var(--row-active)}
+.ctx-item:hover{background:var(--row-active);color:var(--accent)}
 .ctx-item.danger{color:#b91c1c}
 .ctx-item.danger:hover{background:#fef2f2}
 
 /* Zoom slider */
-#zoom-slider{accent-color:var(--accent)}
+#zoom-slider{accent-color:var(--accent-mid)}
 @media print{
   /* Force A3 landscape, tight margins so the schematic fills the page */
   @page { size: A3 landscape; margin: 8mm; }
@@ -311,13 +316,13 @@ function uid(){ return 'id_'+(++_id)+'_'+Date.now().toString(36) }
 
 // ─── STATUS FILL TINTS (monochrome — text always black, fill flags status) ───
 const SC = {
-  'Active':       { fill:'#ffffff', stroke:'#000', text:'#000', badge:null },
-  'OFF':          { fill:'#e5e7eb', stroke:'#000', text:'#000', badge:'#6b7280' },
-  'VACANT':       { fill:'#f3f4f6', stroke:'#000', text:'#000', badge:'#6b7280' },
-  'DISCONNECTED': { fill:'#f3f4f6', stroke:'#000', text:'#000', badge:'#374151' },
-  'NO LOAD':      { fill:'#f3f4f6', stroke:'#000', text:'#000', badge:'#9ca3af' },
-  'SPARE':        { fill:'#fafafa', stroke:'#000', text:'#000', badge:'#9ca3af' },
-  'TO VERIFY':    { fill:'#fffaf0', stroke:'#000', text:'#000', badge:'#a16207' },
+  'Active':       { fill:'#ffffff', stroke:'#232C63', text:'#000', badge:null },
+  'OFF':          { fill:'#e5e7eb', stroke:'#232C63', text:'#000', badge:'#6b7280' },
+  'VACANT':       { fill:'#f3f4f6', stroke:'#232C63', text:'#000', badge:'#6b7280' },
+  'DISCONNECTED': { fill:'#f3f4f6', stroke:'#232C63', text:'#000', badge:'#374151' },
+  'NO LOAD':      { fill:'#f3f4f6', stroke:'#232C63', text:'#000', badge:'#9ca3af' },
+  'SPARE':        { fill:'#fafafa', stroke:'#232C63', text:'#000', badge:'#9ca3af' },
+  'TO VERIFY':    { fill:'#fffaf0', stroke:'#232C63', text:'#000', badge:'#a16207' },
 };
 
 // ─── SIDEBAR ──────────────────────────────────────────────────────────────────
@@ -483,15 +488,15 @@ function buildSchematicSVG(page, sld){
   const boxBot      = busY + ROW_BOX_TOP + ROW_BOX_H;
   const svgH        = boxBot + 30 + FT_H;
 
-  let s = `<svg class="schematic-svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" font-family="Arial,sans-serif">`;
-  s += `<rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#fff" stroke="#333" stroke-width="1.5"/>`;
+  let s = `<svg class="schematic-svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" font-family="'Varela Round',Arial,sans-serif">`;
+  s += `<rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#fff" stroke="#b0b8d8" stroke-width="1.5"/>`;
 
-  // ── TITLE BAR (top, centred — monochrome) ──
-  s += `<rect x="0" y="0" width="${svgW}" height="${TIT_H}" fill="#f3f4f6" stroke="#000" stroke-width="0.8"/>`;
+  // ── TITLE BAR (top, centred — RMS navy) ──
+  s += `<rect x="0" y="0" width="${svgW}" height="${TIT_H}" fill="#232C63" stroke="#1a2050" stroke-width="0.8"/>`;
   const titleParts = [];
   if(sld?.name) titleParts.push(sld.name);
   titleParts.push(page.name || '');
-  s += `<text x="${svgW/2}" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#000">${esc(titleParts.filter(Boolean).join(' — '))}</text>`;
+  s += `<text x="${svgW/2}" y="20" text-anchor="middle" font-size="14" font-weight="bold" fill="#ffffff">${esc(titleParts.filter(Boolean).join(' — '))}</text>`;
   let tp=[];
   if(page.amps)    tp.push(page.amps+' A');
   if(page.phases)  tp.push(page.phases+'-Ph');
@@ -500,15 +505,15 @@ function buildSchematicSVG(page, sld){
   if(page.boundary) tp.push(page.boundary==='inside'?'Inside EN':page.boundary==='outside'?'Outside EN':'Mixed EN');
   if(page.desc)    tp.unshift(page.desc);
   if(tp.length){
-    s += `<text x="${svgW/2}" y="36" text-anchor="middle" font-size="10" fill="#000">${esc(tp.join('  |  '))}</text>`;
+    s += `<text x="${svgW/2}" y="36" text-anchor="middle" font-size="10" fill="#c8d0e7">${esc(tp.join('  |  '))}</text>`;
   }
 
   // ── PAGE NOTES BANNER ──
   if(hasPageNotes){
     const ny = TIT_H;
-    s += `<rect x="0" y="${ny}" width="${svgW}" height="${NOTE_BAND_H}" fill="#fafafa" stroke="#000" stroke-width="0.5"/>`;
-    s += `<text x="8" y="${ny+14}" font-size="10" font-weight="bold" fill="#000">NOTE:</text>`;
-    s += `<text x="46" y="${ny+14}" font-size="10" fill="#000">${esc(clipText(page.notes, svgW-56, 10))}</text>`;
+    s += `<rect x="0" y="${ny}" width="${svgW}" height="${NOTE_BAND_H}" fill="#eef0f7" stroke="#b0b8d8" stroke-width="0.5"/>`;
+    s += `<text x="8" y="${ny+14}" font-size="10" font-weight="bold" fill="#232C63">NOTE:</text>`;
+    s += `<text x="46" y="${ny+14}" font-size="10" fill="#333">${esc(clipText(page.notes, svgW-56, 10))}</text>`;
   }
 
   // ── INCOMER (vertical drop above the bus) ──
@@ -516,10 +521,10 @@ function buildSchematicSVG(page, sld){
     const incTop = TIT_H + NOTE_H + 6;
 
     // Down arrow at top
-    s += `<polygon points="${incX-4},${incTop} ${incX+4},${incTop} ${incX},${incTop+8}" fill="#111"/>`;
+    s += `<polygon points="${incX-4},${incTop} ${incX+4},${incTop} ${incX},${incTop+8}" fill="#232C63"/>`;
 
     // Vertical incomer wire (top → bus)
-    s += `<line x1="${incX}" y1="${incTop+8}" x2="${incX}" y2="${busY}" stroke="#111" stroke-width="2"/>`;
+    s += `<line x1="${incX}" y1="${incTop+8}" x2="${incX}" y2="${busY}" stroke="#232C63" stroke-width="2"/>`;
 
     // Amps label (right of arrow)
     if(page.amps){
@@ -557,7 +562,7 @@ function buildSchematicSVG(page, sld){
   }
 
   // ── HORIZONTAL BUSBAR ──
-  s += `<line x1="${busLeft}" y1="${busY}" x2="${busRight}" y2="${busY}" stroke="#000" stroke-width="5"/>`;
+  s += `<line x1="${busLeft}" y1="${busY}" x2="${busRight}" y2="${busY}" stroke="#232C63" stroke-width="5"/>`;
 
   // Boundary band labels above the bus (OUTSIDE EN / INSIDE EN).
   // Only rendered when circuits on BOTH sides are present — one-sided boards don't need labels
@@ -569,8 +574,8 @@ function buildSchematicSVG(page, sld){
     if(outsideRows.length && insideRows.length){
       const outMidX = (colCx(outsideRows[0]) + colCx(outsideRows[outsideRows.length-1])) / 2;
       const inMidX  = (colCx(insideRows[0])  + colCx(insideRows[insideRows.length-1]))  / 2;
-      s += `<text x="${outMidX}" y="${busY-8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#000">OUTSIDE EN</text>`;
-      s += `<text x="${inMidX}"  y="${busY-8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#000">INSIDE EN</text>`;
+      s += `<text x="${outMidX}" y="${busY-8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#35679E">OUTSIDE EN</text>`;
+      s += `<text x="${inMidX}"  y="${busY-8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#35679E">INSIDE EN</text>`;
     }
   }
 
@@ -590,7 +595,7 @@ function buildSchematicSVG(page, sld){
     const hasMeter = isCirc ? c.mtype !== 'none' : true;  // sub-boards always show meter slot if metered
 
     // Vertical spine (from bus to top of load box)
-    s += `<line x1="${cx}" y1="${busY}" x2="${cx}" y2="${rowSpineBot}" stroke="#111" stroke-width="1.5"/>`;
+    s += `<line x1="${cx}" y1="${busY}" x2="${cx}" y2="${rowSpineBot}" stroke="#232C63" stroke-width="1.5"/>`;
 
     // Phase ticks just below bus
     s += phaseTicksV(cx, busY + ROW_PHASE_Y, ph);
@@ -603,8 +608,8 @@ function buildSchematicSVG(page, sld){
     // CB box (centred on cx)
     const cbX = cx - 11;
     const cbY = busY + ROW_CB_TOP;
-    const cbFill   = isCirc ? sc.fill   : (sc.fill==='#ffffff' ? '#dbeafe' : sc.fill);
-    const cbStroke = isCirc ? sc.stroke : (sc.stroke==='#222'  ? '#1e40af' : sc.stroke);
+    const cbFill   = isCirc ? sc.fill   : (sc.fill==='#ffffff' ? '#c8d9ef' : sc.fill);
+    const cbStroke = isCirc ? sc.stroke : (sc.stroke==='#222'  ? '#35679E' : sc.stroke);
     s += `<rect x="${cbX}" y="${cbY}" width="22" height="${ROW_CB_H}" fill="${cbFill}" stroke="${cbStroke}" stroke-width="1.5"/>`;
     s += `<line x1="${cbX+2}" y1="${cbY+2}" x2="${cbX+20}" y2="${cbY+ROW_CB_H-2}" stroke="${cbStroke}" stroke-width="1.1"/>`;
     s += `<line x1="${cbX+20}" y1="${cbY+2}" x2="${cbX+2}" y2="${cbY+ROW_CB_H-2}" stroke="${cbStroke}" stroke-width="1.1"/>`;
@@ -662,8 +667,8 @@ function buildSchematicSVG(page, sld){
     const boxX = cx - boxW/2;
     const boxY = busY + ROW_BOX_TOP;
     const subOffline = !isCirc && c.status && c.status!=='Active';
-    const bFill   = isCirc ? sc.fill   : (subOffline ? sc.fill : '#f5f7fa');   // sub-boards: very pale grey, not blue
-    const bStroke = '#111';                                                     // black border for all boxes
+    const bFill   = isCirc ? sc.fill   : (subOffline ? sc.fill : '#eef0f7');   // sub-boards: RMS navy-tinted background
+    const bStroke = '#232C63';                                                  // navy border for all boxes
     const bText   = '#000';                                                     // black text inside all boxes
     s += `<rect x="${boxX}" y="${boxY}" width="${boxW}" height="${ROW_BOX_H}" fill="${bFill}" stroke="${bStroke}" stroke-width="1.2" style="cursor:pointer" onclick="${isCirc?'editCircuit':'editSub'}('${c.id}')"/>`;
 
@@ -718,7 +723,7 @@ function buildSchematicSVG(page, sld){
 
   // ── FOOTER (single title block — Site | MSB | Date | By | Rev) ──────────────
   const fbY = svgH - FT_H;
-  s += `<rect x="0" y="${fbY}" width="${svgW}" height="${FT_H}" fill="#f3f4f6" stroke="#000" stroke-width="0.8"/>`;
+  s += `<rect x="0" y="${fbY}" width="${svgW}" height="${FT_H}" fill="#232C63" stroke="#1a2050" stroke-width="0.8"/>`;
 
   const cols = [
     {w:0.32, label:'SITE',   val: sld?.name || ''},
@@ -735,21 +740,21 @@ function buildSchematicSVG(page, sld){
 
   // Dividers
   for(let i=1;i<cols.length;i++){
-    s += `<line x1="${edges[i]}" y1="${fbY}" x2="${edges[i]}" y2="${fbY + 32}" stroke="#000" stroke-width="0.5"/>`;
+    s += `<line x1="${edges[i]}" y1="${fbY}" x2="${edges[i]}" y2="${fbY + 32}" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>`;
   }
   // Horizontal rule under field row
-  s += `<line x1="0" y1="${fbY + 32}" x2="${svgW}" y2="${fbY + 32}" stroke="#000" stroke-width="0.5"/>`;
+  s += `<line x1="0" y1="${fbY + 32}" x2="${svgW}" y2="${fbY + 32}" stroke="rgba(255,255,255,0.2)" stroke-width="0.5"/>`;
 
   // Field text
   cols.forEach((c,i)=>{
     const x = edges[i] + 5;
     const w = edges[i+1] - edges[i] - 10;
-    s += `<text x="${x}" y="${fbY + 13}" font-size="8" font-weight="bold" fill="#000">${esc(c.label)}</text>`;
-    s += `<text x="${x}" y="${fbY + 27}" font-size="10" font-weight="bold" fill="#000">${esc(clipText(c.val, w, 10))}</text>`;
+    s += `<text x="${x}" y="${fbY + 13}" font-size="8" font-weight="bold" fill="#c8d0e7">${esc(c.label)}</text>`;
+    s += `<text x="${x}" y="${fbY + 27}" font-size="10" font-weight="bold" fill="#ffffff">${esc(clipText(c.val, w, 10))}</text>`;
   });
 
   // Caption (below the field row)
-  s += `<text x="${svgW/2}" y="${fbY + 47}" text-anchor="middle" font-size="8" fill="#000">Symbols per AS 1102.101 / IEC 60617 — Australian metering schematic</text>`;
+  s += `<text x="${svgW/2}" y="${fbY + 47}" text-anchor="middle" font-size="8" fill="#c8d0e7">Symbols per AS 1102.101 / IEC 60617 — Australian metering schematic</text>`;
 
   s += '</svg>';
   return s;
