@@ -508,6 +508,16 @@ function buildSchematicSVG(page, sld){
     s += `<text x="${svgW/2}" y="36" text-anchor="middle" font-size="10" fill="#c8d0e7">${esc(tp.join('  |  '))}</text>`;
   }
 
+  // ── COMPANY LOGO (top-right of title bar) ──
+  {
+    const boltX = svgW - 14;  // left edge of lightning bolt
+    const boltY = 14;         // top edge, vertically centred in 48px bar
+    // Lightning bolt polygon (10×20 px, pink #CC3366)
+    s += `<polygon points="${boltX+4},${boltY} ${boltX+10},${boltY} ${boltX+6},${boltY+9} ${boltX+10},${boltY+9} ${boltX},${boltY+20} ${boltX+4},${boltY+11} ${boltX},${boltY+11}" fill="#CC3366"/>`;
+    // Wordmark right-aligned, finishing 4px to the left of the bolt
+    s += `<text x="${boltX-4}" y="${TIT_H/2+4}" text-anchor="end" font-family="Montserrat,Arial,sans-serif" font-size="9" font-weight="700" fill="#ffffff" letter-spacing="0.4">Remote Metering Solutions</text>`;
+  }
+
   // ── PAGE NOTES BANNER ──
   if(hasPageNotes){
     const ny = TIT_H;
@@ -547,7 +557,7 @@ function buildSchematicSVG(page, sld){
       s += `<text x="${incX}" y="${my+4}" text-anchor="middle" font-size="9" font-weight="bold" fill="#000">M</text>`;
       // Vertical labels — anchor just below meter, extend UP through space between meter and bus
       const labelBaseY = busY - 6;
-      let lx = incX + M_R + 5;
+      let lx = incX + M_R + 12;
       if(page.meter){ s += vText(lx, labelBaseY, '#'+String(page.meter).replace(/^#/,''), {fontSize:8, fill:'#000'}); lx += 11; }
       if(page.nmi){   s += vText(lx, labelBaseY, '#'+String(page.nmi).replace(/^#?NMI/i,''), {fontSize:8, fill:'#000'}); lx += 11; }
       if(page.rx){    s += vText(lx, labelBaseY, 'Rx='+page.rx, {fontSize:8, fill:'#000'}); }
@@ -642,7 +652,7 @@ function buildSchematicSVG(page, sld){
       // Vertical labels reading bottom-to-top, starting at right of meter.
       // Smaller font + larger pitch so adjacent lines have proper clearance and don't visually merge.
       const labelBaseY = my + M_R + 4;
-      let lx = cx + M_R + 5;
+      let lx = cx + M_R + 12;
       const LABEL_PITCH = 11;     // horizontal pitch between rotated label lines
       const LABEL_FS    = 8;      // font-size of meter/NMI/Rx labels
       if(isCirc){
