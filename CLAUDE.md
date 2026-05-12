@@ -99,6 +99,7 @@ Every record gets a generated `id` of the form `id_<n>_<base36-timestamp>` from 
 - **Australian English** in user-facing text (e.g. "centre", "colour", "labelled").
 - The user works in **Excel formulas natively** — when discussing data, Excel-style references and formulas are fine. For HTML/JS, frame explanations in plain English alongside any code.
 - **Confirmation before destructive changes** — the user prefers a verification step over speed. Always confirm before deleting, overwriting saved data, or making structural code changes.
+- **Ask clarifying questions in multiple-choice format** — when checking design decisions, scope, or approach with the user, always use the `AskUserQuestion` tool with structured options. Avoid free-text prose questions or inline markdown tables of options. Only exception: short factual yes/no follow-ups that don't need structured selection.
 - **Backwards compatibility on import** — `mtype` values `3ph`/`1ph`/`2ph` from older exports are auto-converted to `metered` (see [sld_builder.html:1086-1087](sld_builder.html#L1086-L1087) and [sld_builder.html:1144-1148](sld_builder.html#L1144-L1148)). Keep this conversion in place when touching import code.
 - **No build step** — keep the project as a single HTML file unless the user explicitly asks to split it. Drop-in editability is a feature.
 

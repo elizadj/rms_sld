@@ -61,6 +61,15 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
 .settings-pane label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
 .settings-pane input[type=text], .settings-pane textarea{font-family:'Varela Round',Arial,sans-serif;font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;width:100%}
 .settings-pane textarea{font-family:'Courier New',monospace;font-size:11px;resize:vertical}
+.dev-only{display:none}
+body.dev-mode .dev-only{display:block}
+body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-content:space-between}
+.dev-badge{display:inline-block;font-size:9px;font-weight:700;color:#fff;background:#CC3366;padding:1px 5px;border-radius:3px;margin-left:6px;letter-spacing:0.3px;text-transform:uppercase}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border-soft)}
+.toggle-row:first-child{border-top:none}
+.toggle-row label{cursor:pointer;flex:1;font-size:13px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:600}
+.toggle-row small{display:block;margin-top:2px;color:var(--text-muted);font-size:11px;font-weight:400}
+.toggle-row input[type=checkbox]{width:38px;height:22px;cursor:pointer;flex-shrink:0;margin-left:14px}
 .logo-pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-family:'Varela Round',Arial,sans-serif;font-size:12px}
 .logo-pos-grid label{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--text);cursor:pointer;padding:4px 8px;border:1px solid var(--border-soft);border-radius:4px}
 .logo-pos-grid label:has(input:checked){border-color:var(--accent-mid);background:var(--row-active)}
@@ -207,11 +216,11 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
       <div class="dropdown-item" onclick="saveProject();closeDropdowns()">Current SLD as JSON</div>
       <div class="dropdown-item" onclick="exportBlankTemplate();closeDropdowns()">Blank Template (.xlsx)</div>
       <div class="dropdown-divider"></div>
-      <div class="dropdown-section-header">Sync</div>
-      <div class="dropdown-item" onclick="syncToLocalFile();closeDropdowns()">Save to local file…</div>
-      <div class="dropdown-item" onclick="syncFromLocalFile();closeDropdowns()">Load from local file…</div>
-      <div class="dropdown-item" onclick="syncToTestEnv();closeDropdowns()" title="Saves with the fixed filename test_sync.json for the dev-loop workflow">Save to test environment</div>
-      <div class="dropdown-item" onclick="syncFromTestEnv();closeDropdowns()" title="Open a file picker; pick test_sync.json from the project folder">Load from test environment</div>
+      <div class="dropdown-section-header dev-only">Sync <span class="dev-badge">Dev</span></div>
+      <div class="dropdown-item dev-only" onclick="syncToLocalFile();closeDropdowns()">Save to local file…</div>
+      <div class="dropdown-item dev-only" onclick="syncFromLocalFile();closeDropdowns()">Load from local file…</div>
+      <div class="dropdown-item dev-only" onclick="syncToTestEnv();closeDropdowns()" title="Saves with the fixed filename test_sync.json for the dev-loop workflow">Save to test environment</div>
+      <div class="dropdown-item dev-only" onclick="syncFromTestEnv();closeDropdowns()" title="Open a file picker; pick test_sync.json from the project folder">Load from test environment</div>
       <div class="dropdown-divider"></div>
       <div class="dropdown-section-header">Output</div>
       <div class="dropdown-item" onclick="printAll();closeDropdowns()">Print All Pages</div>
@@ -239,6 +248,7 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
     <h2>Settings</h2>
     <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border-soft)">
       <div class="settings-tab active" data-tab="logo" onclick="switchSettingsTab('logo')">Logo &amp; Branding</div>
+      <div class="settings-tab" data-tab="developer" onclick="switchSettingsTab('developer')">Developer</div>
       <div class="settings-tab" data-tab="about" onclick="switchSettingsTab('about')">About</div>
     </div>
     <div class="settings-pane" id="settings-pane-logo">
@@ -272,6 +282,15 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
       </div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="tbtn danger" style="background:#fff;border:1px solid var(--border);color:#b91c1c" onclick="resetLogo()">Reset to RMS default</button>
+      </div>
+    </div>
+    <div class="settings-pane" id="settings-pane-developer" style="display:none">
+      <div class="toggle-row">
+        <label for="dev-mode-toggle">
+          Developer Mode
+          <small>Reveals the Sync menu (Save/Load to local file or test environment). Stored per-browser, off by default. Intended for the dev-loop workflow with Claude while iterating on the project.</small>
+        </label>
+        <input type="checkbox" id="dev-mode-toggle" onchange="toggleDevMode(this.checked)">
       </div>
     </div>
     <div class="settings-pane" id="settings-pane-about" style="display:none">
@@ -1382,6 +1401,10 @@ function closeDropdowns(){
   document.querySelectorAll('.dropdown-menu.open').forEach(m=>m.classList.remove('open'));
 }
 function openSettings(){
+  // Refresh dev-mode toggle state from localStorage
+  const devOn = localStorage.getItem('rms_sld_dev_mode')==='1';
+  const devTog = document.getElementById('dev-mode-toggle');
+  if(devTog) devTog.checked = devOn;
   // Load current state into modal
   const logo = project.settings && project.settings.logo || {};
   document.getElementById('logo-url').value = logo.type==='url' ? (logo.data || '') : '';
@@ -1397,6 +1420,21 @@ function openSettings(){
 function switchSettingsTab(tab){
   document.querySelectorAll('.settings-tab').forEach(el=>el.classList.toggle('active', el.dataset.tab===tab));
   document.querySelectorAll('.settings-pane').forEach(el=>el.style.display=el.id==='settings-pane-'+tab?'block':'none');
+}
+function toggleDevMode(on){
+  if(on){
+    document.body.classList.add('dev-mode');
+    localStorage.setItem('rms_sld_dev_mode','1');
+  } else {
+    document.body.classList.remove('dev-mode');
+    localStorage.removeItem('rms_sld_dev_mode');
+  }
+}
+function _initDevMode(){
+  const on = localStorage.getItem('rms_sld_dev_mode')==='1';
+  if(on) document.body.classList.add('dev-mode');
+  const tog = document.getElementById('dev-mode-toggle');
+  if(tog) tog.checked = on;
 }
 function handleLogoUpload(ev){
   const file = ev.target.files[0];
@@ -2165,7 +2203,7 @@ tbody tr:nth-child(even) td{background:#f9fafb}
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-tryAutoLoad(); renderSidebar(); renderCanvas(); renderToolbarLogo();
+tryAutoLoad(); renderSidebar(); renderCanvas(); renderToolbarLogo(); _initDevMode();
 </script>
 </body>
 </html>

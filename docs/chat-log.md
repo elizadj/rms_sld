@@ -4,6 +4,62 @@ Short summaries of each working session. Newest first. Keep entries brief — li
 
 ---
 
+## 2026-05-12 — Pre-meter taps + Sync menu + Logo system + Hybrid menu
+
+A long session built around the original ask (pre-meter taps for Wendouree MSB-4) plus four supporting tracks.
+
+**Toolbar consolidation → hybrid menu** ([sld_builder.html](../sld_builder.html)):
+
+- Earlier in the session: four separate Import/Export buttons collapsed into two dropdowns (commit `4e17c6e`, pushed).
+- Then: full hybrid layout — single `☰` menu groups Project / Import / Export / Sync / Output sections; `+ Add ▾` dropdown for Circuit / Sub-Board / Pre-Meter Tap; Print Page quick-access; new `⚙` Settings button.
+
+**Per-SLD JSON export bug fix:**
+
+- `saveProject()` was dumping the entire project (all SLDs together). Now mirrors `exportExcel()` — exports just the currently selected SLD with the project-level report + settings blocks.
+- `loadProject()` was replacing the entire project on import. Now merges by SLD id (update existing, append new) — mirrors `importExcel()`. Preserves localStorage on round-trip.
+
+**Logo & Branding system (Phase 2A):**
+
+- New Settings modal with file upload / URL paste / SVG markup as input methods (all three).
+- Position picker: header/footer × left/right.
+- Logo data stored in `project.settings.logo`; survives JSON round-trip.
+- Both the toolbar logo and the schematic logo follow the same upload (one source, two render points). Default RMS lightning-bolt + wordmark untouched when no custom logo.
+- White rounded chip behind custom logos for legibility against the navy bars.
+- Phase 2B (per-project override) deferred — noted.
+
+**Sync menu (step 3):**
+
+- Save/Load × Local file / Test environment items wired up. Test environment uses fixed filename `test_sync.json` for the dev-loop workflow.
+- Real two-way File System Access API sync deferred until the app is hosted over `http://` — noted.
+
+**Pre-meter taps (step 4 — the original ask):**
+
+- New `preMeterTaps[]` collection on each Page. Modal supports name, amps, phases, side (Left/Right), status, optional own CT, optional own meter (with NMI/Rx/kWh), shops, notes.
+- SVG renders horizontal stub off the incomer wire above the main CT, on the configured side. Phase ticks, CB box, optional CT + meter circles with labels, name + shops label clickable to edit.
+- Main meter pushed down by the tap area; italic caption *"Main meter excludes pre-meter taps"* appears nearby when taps exist.
+- JSON round-trip with backwards-compat defaults on all import paths.
+- xlsx import/export of taps deferred — JSON-only round-trip for now.
+
+**Test data layout cleanup:**
+
+- Deleted `SLD.JSON.json`, `New_Project_Point Cook.json`, `WENDOUREE_Schematic_CORRECTED.xlsx` (stale/superseded).
+- Added `Template_Schematic.xlsx` (mirrors the Blank Template button output exactly — single canonical reference).
+- `CLAUDE.md` updated with new file layout, source-of-truth section, schema-change workflow.
+
+**New scaffolding:**
+
+- `docs/notes.md` — open-items tracker. Triggers: *"make a note of this"* / *"recall my notes"*. 3 items currently open (public URL hosting, Phase 2B per-project logo, optional logo background colour picker).
+- `docs/prompt-pre-meter-taps.md` — the Claude-Code prompt we wrote earlier in the session, kept as a spec reference.
+
+**Working notes:**
+
+- The Edit tool truncated `sld_builder.html` once during the dropdown work (lost ~566 lines). Restored from `git show HEAD:sld_builder.html`. From that point onward, all edits to this file go through an atomic Python script (`tmp + os.replace`) with pre-write assertions. No further truncations.
+- The `.git/index.lock` repeatedly reappeared on the Linux mount side. PowerShell `Remove-Item` from Windows + immediate `git push` is the reliable workaround.
+
+Commit: `3721d95` — pushed to `main` (`199cadf..3721d95`).
+
+---
+
 ## 2026-05-12 — Report module, auto-save, blank template
 
 Changes made to [sld_builder.html](../sld_builder.html):
