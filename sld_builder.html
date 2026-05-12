@@ -795,6 +795,26 @@ function buildSchematicSVG(page, sld){
   const allSubBoards = (page.subBoards || []).map(sb=>({type:'sub',data:sb}));
   const rows = [...allCircuits, ...allSubBoards];
 
+  // ── BUS SECTION GROUPING ──
+  // Group adjacent rows that share the same `section` value into contiguous bus segments.
+  // Empty section ("") is treated as a single default segment. Pre-meter taps don't
+  // participate — they sit above the bus.
+  const SECTION_GAP = 32; // px gap drawn between adjacent bus segments
+  const sectionGroups = []; // {section, startIdx, endIdx}
+  rows.forEach((row, i) => {
+    const sec = ((row.data.section || '') + '').trim().toUpperCase();
+    const last = sectionGroups[sectionGroups.length - 1];
+    if(last && last.section === sec){ last.endIdx = i; }
+    else { sectionGroups.push({section: sec, startIdx: i, endIdx: i}); }
+  });
+  const hasBusSplits  = sectionGroups.length > 1;
+  const totalGapWidth = hasBusSplits ? (sectionGroups.length - 1) * SECTION_GAP : 0;
+  // Per-column x-offset = (segment index) * SECTION_GAP
+  const colOffsets = new Array(rows.length).fill(0);
+  sectionGroups.forEach((g, gi) => {
+    for(let i = g.startIdx; i <= g.endIdx; i++) colOffsets[i] = gi * SECTION_GAP;
+  });
+
   const hasIncomer   = !!(page.amps || page.ct || page.meter);
   const hasPageNotes = !!page.notes && page.showNotes !== false;
   const NOTE_H = hasPageNotes ? NOTE_BAND_H : 0;
@@ -814,12 +834,12 @@ function buildSchematicSVG(page, sld){
   // COL_W is the preferred maximum; for pages with many circuits it shrinks proportionally.
   const colW = Math.min(COL_W, Math.floor((1480 - LEFT_PAD - RIGHT_PAD) / numCols));
   // Enforce a minimum SVG width so the footer title block never clips short text.
-  const svgW = Math.max(900, LEFT_PAD + numCols * colW + RIGHT_PAD);
-  const colCx = (i)=> LEFT_PAD + i*colW + colW/2;
+  const svgW = Math.max(900, LEFT_PAD + numCols * colW + totalGapWidth + RIGHT_PAD);
+  const colCx = (i)=> LEFT_PAD + i*colW + colW/2 + (colOffsets[i] || 0);
 
-  // Bus extents
-  const busLeft  = LEFT_PAD + 8;
-  const busRight = LEFT_PAD + numCols * colW - 8;
+  // Bus extents — anchored on colCx so any per-segment offsets are included.
+  const busLeft  = colCx(0) - colW/2 + 8;
+  const busRight = colCx(numCols-1) + colW/2 - 8;
 
   // Find incomer drop column — boundary between OUTSIDE EN and INSIDE EN circuits.
   // Default: middle of the bus.
@@ -950,22 +970,25 @@ function buildSchematicSVG(page, sld){
   }
 
   // ── HORIZONTAL BUSBAR ──
-  s += `<line x1="${busLeft}" y1="${busY}" x2="${busRight}" y2="${busY}" stroke="#232C63" stroke-width="5"/>`;
-
-  // Boundary band labels above the bus (OUTSIDE EN / INSIDE EN).
-  // Only rendered when circuits on BOTH sides are present — one-sided boards don't need labels
-  // (the subtitle already shows the page-level boundary), and suppressing them also prevents
-  // the label overlapping the incomer drop when all circuits share the same boundary.
-  {
-    const outsideRows = rows.map((r,i)=>r.data.boundary==='outside'?i:-1).filter(i=>i>=0);
-    const insideRows  = rows.map((r,i)=>r.data.boundary==='inside' ?i:-1).filter(i=>i>=0);
-    if(outsideRows.length && insideRows.length){
-      const outMidX = (colCx(outsideRows[0]) + colCx(outsideRows[outsideRows.length-1])) / 2;
-      const inMidX  = (colCx(insideRows[0])  + colCx(insideRows[insideRows.length-1]))  / 2;
-      s += `<text x="${outMidX}" y="${busY-8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#35679E">OUTSIDE EN</text>`;
-      s += `<text x="${inMidX}"  y="${busY-8}" text-anchor="middle" font-size="10" font-weight="bold" fill="#35679E">INSIDE EN</text>`;
-    }
+  // Draw one line per section group. With a single group this matches the old full-width bus.
+  if(rows.length){
+    sectionGroups.forEach(g => {
+      const segL = colCx(g.startIdx) - colW/2 + 8;
+      const segR = colCx(g.endIdx)   + colW/2 - 8;
+      s += `<line x1="${segL}" y1="${busY}" x2="${segR}" y2="${busY}" stroke="#232C63" stroke-width="5"/>`;
+      // Section label above the segment (only when bus is split and section non-blank).
+      if(hasBusSplits && g.section){
+        const segMid = (segL + segR) / 2;
+        s += `<text x="${segMid}" y="${busY-22}" text-anchor="middle" font-size="10" font-weight="bold" fill="#35679E">${esc(g.section)}</text>`;
+      }
+    });
+  } else {
+    s += `<line x1="${busLeft}" y1="${busY}" x2="${busRight}" y2="${busY}" stroke="#232C63" stroke-width="5"/>`;
   }
+
+  // Bus labels are now data-driven via the `section` field (rendered with each bus segment).
+  // No hardcoded OUTSIDE EN / INSIDE EN strings — type whatever you want in Bus Section
+  // (e.g. "MP1", "OUTSIDE EN", "INSIDE EN", "FEEDER A") and it appears as the label.
 
   // Empty page hint
   if(!rows.length){
