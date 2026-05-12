@@ -471,13 +471,24 @@ body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-co
           <option value="mixed">Mixed</option>
         </select>
       </div>
-      <div class="form-group full"><label>Shops / Tenancies Served</label><input id="sub-shops" placeholder="e.g. T49, T30, T31, K5"></div>
       <div class="form-group full">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;text-transform:none;letter-spacing:0;font-weight:600;color:var(--text)">
-          <input type="checkbox" id="sub-show-notes"> Show notes on schematic
-        </label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <label style="margin:0">Shops / Tenancies Served</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text-muted);margin:0">
+            <input type="checkbox" id="sub-show-shops"> Show on schematic
+          </label>
+        </div>
+        <input id="sub-shops" placeholder="e.g. T49, T30, T31, K5">
       </div>
-      <div class="form-group full"><label>Notes</label><input id="sub-notes" placeholder="e.g. continuation on page 6..."></div>
+      <div class="form-group full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <label style="margin:0">Notes</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text-muted);margin:0">
+            <input type="checkbox" id="sub-show-notes"> Show on schematic
+          </label>
+        </div>
+        <input id="sub-notes" placeholder="e.g. continuation on page 6...">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-delete" id="btn-delete-sub" onclick="deleteCurrentSub()" style="display:none">Delete Sub-Board</button>
@@ -1104,11 +1115,16 @@ function buildSchematicSVG(page, sld){
       s += vText(boxX + lx, baseY, clipText(L, maxTextHpx, 10), {fontSize:10, fontWeight:'bold', fill:bText});
     });
 
-    // Sub-board note display (when showNotes is ticked)
-    if(!isCirc && c.showNotes && c.notes){
-      const noteY = boxY + ROW_BOX_H + 12;
-      const noteText = clipText(c.notes, boxW + 20, 8);
-      s += `<text x="${cx}" y="${noteY}" text-anchor="middle" font-size="8" font-style="italic" fill="#35679E">${esc(noteText)}</text>`;
+    // Sub-board shops/notes display (when respective Show on schematic is ticked)
+    if(!isCirc){
+      let _extraY = boxY + ROW_BOX_H + 12;
+      if(c.showShops && c.shops){
+        s += `<text x="${cx}" y="${_extraY}" text-anchor="middle" font-size="8" font-style="italic" fill="#35679E">${esc(clipText(c.shops, boxW + 30, 8))}</text>`;
+        _extraY += 12;
+      }
+      if(c.showNotes && c.notes){
+        s += `<text x="${cx}" y="${_extraY}" text-anchor="middle" font-size="8" font-style="italic" fill="#35679E">${esc(clipText(c.notes, boxW + 30, 8))}</text>`;
+      }
     }
   });
 
@@ -1337,6 +1353,7 @@ function openAddSubBoard(){
   document.getElementById('btn-delete-sub').style.display='none';
   ['sub-name','sub-amps','sub-ct','sub-shops','sub-notes','sub-section','sub-boundary'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('sub-show-notes').checked = false;
+  document.getElementById('sub-show-shops').checked = false;
   document.getElementById('sub-phases').value='3';
   document.getElementById('sub-status').value='Active';
   const page = getCurrentPage();
@@ -1360,6 +1377,7 @@ function editSub(subId){
   document.getElementById('sub-notes').value=sb.notes||'';
   document.getElementById('sub-boundary').value=sb.boundary||'';
   document.getElementById('sub-show-notes').checked = !!sb.showNotes;
+  document.getElementById('sub-show-shops').checked = !!sb.showShops;
   openModal('modal-sub');
 }
 function saveSub(){
@@ -1376,7 +1394,8 @@ function saveSub(){
     shops:document.getElementById('sub-shops').value.trim(),
     notes:document.getElementById('sub-notes').value.trim(),
     boundary:document.getElementById('sub-boundary').value,
-    showNotes:document.getElementById('sub-show-notes').checked
+    showNotes:document.getElementById('sub-show-notes').checked,
+    showShops:document.getElementById('sub-show-shops').checked
   };
   if(editingId){const sb=page.subBoards.find(x=>x.id===editingId);if(sb)Object.assign(sb,data);}
   else page.subBoards.push({id:uid(),...data});
@@ -1798,7 +1817,8 @@ function importExcel(e){
           shops:r.Shops||'',
           notes:r.Notes||'',
           boundary:r.Boundary||'',
-          showNotes:false
+          showNotes:false,
+          showShops:false
         });
       });
       const sld={id:uid(),name:info['Site Name']||file.name.replace(/\.xlsx?$/i,''),desc:info['Address']||'',ref:info['Drawing Ref']||'',date:info['Date']||'',by:info['Prepared By']||'',rev:info['Revision']||'',pages};
@@ -1947,6 +1967,7 @@ async function syncReload(){
         if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
         if(typeof sb.boundary !== 'string') sb.boundary = '';
         if(typeof sb.showNotes !== 'boolean') sb.showNotes = false;
+        if(typeof sb.showShops !== 'boolean') sb.showShops = false;
       });
     }));
     selectedSLDId = project.slds[0]?.id || null;
@@ -2010,6 +2031,7 @@ function loadProject(e){
           if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
           if(typeof sb.boundary !== 'string') sb.boundary = '';
           if(typeof sb.showNotes !== 'boolean') sb.showNotes = false;
+          if(typeof sb.showShops !== 'boolean') sb.showShops = false;
         });
       }));
       // Merge: update existing SLDs by id, append new ones. Mirrors importExcel().
@@ -2107,7 +2129,7 @@ function tryAutoLoad(){
       p.slds.forEach(s=>(s.pages||[]).forEach(pg=>{
         if(!Array.isArray(pg.preMeterTaps)) pg.preMeterTaps = [];
         (pg.preMeterTaps||[]).forEach(t=>{ if(typeof t.boundary !== 'string') t.boundary = ''; });
-        (pg.subBoards||[]).forEach(sb=>{ if(typeof sb.boundary !== 'string') sb.boundary = ''; if(typeof sb.showNotes !== 'boolean') sb.showNotes = false; });
+        (pg.subBoards||[]).forEach(sb=>{ if(typeof sb.boundary !== 'string') sb.boundary = ''; if(typeof sb.showNotes !== 'boolean') sb.showNotes = false; if(typeof sb.showShops !== 'boolean') sb.showShops = false; });
       }));
       project = p; return true;
     }
