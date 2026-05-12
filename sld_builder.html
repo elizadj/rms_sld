@@ -217,10 +217,10 @@ body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-co
       <div class="dropdown-item" onclick="exportBlankTemplate();closeDropdowns()">Blank Template (.xlsx)</div>
       <div class="dropdown-divider"></div>
       <div class="dropdown-section-header dev-only">Sync <span class="dev-badge">Dev</span></div>
-      <div class="dropdown-item dev-only" onclick="syncToLocalFile();closeDropdowns()">Save to local file…</div>
-      <div class="dropdown-item dev-only" onclick="syncFromLocalFile();closeDropdowns()">Load from local file…</div>
-      <div class="dropdown-item dev-only" onclick="syncToTestEnv();closeDropdowns()" title="Saves with the fixed filename test_sync.json for the dev-loop workflow">Save to test environment</div>
-      <div class="dropdown-item dev-only" onclick="syncFromTestEnv();closeDropdowns()" title="Open a file picker; pick test_sync.json from the project folder">Load from test environment</div>
+      <div class="dropdown-item dev-only sync-status-row" id="sync-status-row" style="font-size:11px;font-style:italic;color:#5a6087;cursor:default" onclick="event.stopPropagation()">Not connected</div>
+      <div class="dropdown-item dev-only" id="sync-connect-item" onclick="syncConnect();closeDropdowns()">Connect to sync file…</div>
+      <div class="dropdown-item dev-only" id="sync-reload-item" onclick="syncReload();closeDropdowns()" style="color:#5a6087;cursor:not-allowed">Reload from file</div>
+      <div class="dropdown-item dev-only" id="sync-disconnect-item" onclick="syncDisconnect();closeDropdowns()" style="color:#5a6087;cursor:not-allowed">Disconnect</div>
       <div class="dropdown-divider"></div>
       <div class="dropdown-section-header">Output</div>
       <div class="dropdown-item" onclick="printAll();closeDropdowns()">Print All Pages</div>
@@ -1717,38 +1717,167 @@ function importExcel(e){
   };
   reader.readAsBinaryString(file);e.target.value='';
 }
-// ─── SYNC HELPERS (wraps export with fixed/variable filenames) ───────────────
-// Real two-way File System Access API sync is deferred until the app is hosted
-// over http:// (file:// blocks the API). See docs/notes.md.
-function _exportCurrentSldAsJson(filename){
-  if(!selectedSLDId){alert('Please select an SLD to export.');return;}
-  const sld=project.slds.find(s=>s.id===selectedSLDId);if(!sld)return;
-  const exported={
-    name: sld.name || 'New Project',
-    slds: [sld],
-    report: project.report || {},
-    settings: project.settings || {}
-  };
-  const json=JSON.stringify(exported,null,2);
-  const a=document.createElement('a');
-  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(json);
-  a.download=filename;
-  a.click();
+// ─── SYNC — File System Access API two-way file binding ──────────────
+// When a sync file is connected, every autoSave() also writes the project to
+// the file silently. "Reload from file" re-reads it (for external edits).
+// Handle is persisted in IndexedDB so it survives page reloads. Permission may
+// need to be re-granted on first interaction each session per browser policy.
+let _syncHandle = null;
+const _IDB_NAME = 'rms_sld_sync';
+const _IDB_STORE = 'handles';
+function _idbOpen(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(_IDB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(_IDB_STORE);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
 }
-function syncToLocalFile(){
-  if(!selectedSLDId){alert('Please select an SLD to export.');return;}
-  const sld=project.slds.find(s=>s.id===selectedSLDId);if(!sld)return;
-  _exportCurrentSldAsJson((sld.name||'sld_project').replace(/[^a-z0-9]/gi,'_')+'.json');
+async function _idbSet(key, val){
+  const db = await _idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(_IDB_STORE, 'readwrite');
+    tx.objectStore(_IDB_STORE).put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
 }
-function syncFromLocalFile(){
-  loadProjectClick();
+async function _idbGet(key){
+  const db = await _idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(_IDB_STORE, 'readonly');
+    const req = tx.objectStore(_IDB_STORE).get(key);
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
 }
-function syncToTestEnv(){
-  _exportCurrentSldAsJson('test_sync.json');
+async function _idbDel(key){
+  const db = await _idbOpen();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction(_IDB_STORE, 'readwrite');
+    tx.objectStore(_IDB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = e => reject(e.target.error);
+  });
 }
-function syncFromTestEnv(){
-  alert('Pick test_sync.json from your project folder.');
-  loadProjectClick();
+function _fsaaSupported(){
+  return typeof window.showSaveFilePicker === 'function';
+}
+function _updateSyncMenu(){
+  const statusRow = document.getElementById('sync-status-row');
+  const connectItem = document.getElementById('sync-connect-item');
+  const reloadItem = document.getElementById('sync-reload-item');
+  const disconnectItem = document.getElementById('sync-disconnect-item');
+  if(!statusRow) return;
+  if(_syncHandle){
+    statusRow.textContent = 'Connected: ' + _syncHandle.name;
+    statusRow.style.color = '#bbf7d0';
+    statusRow.style.fontStyle = 'normal';
+    if(connectItem) connectItem.style.display = 'none';
+    if(reloadItem){ reloadItem.style.color = '#cdd3f0'; reloadItem.style.cursor = 'pointer'; }
+    if(disconnectItem){ disconnectItem.style.color = '#cdd3f0'; disconnectItem.style.cursor = 'pointer'; }
+  } else {
+    statusRow.textContent = 'Not connected';
+    statusRow.style.color = '#5a6087';
+    statusRow.style.fontStyle = 'italic';
+    if(connectItem) connectItem.style.display = '';
+    if(reloadItem){ reloadItem.style.color = '#5a6087'; reloadItem.style.cursor = 'not-allowed'; }
+    if(disconnectItem){ disconnectItem.style.color = '#5a6087'; disconnectItem.style.cursor = 'not-allowed'; }
+  }
+}
+async function syncConnect(){
+  if(!_fsaaSupported()){
+    alert('Real two-way Sync needs the File System Access API.\n\nIt works in Chrome / Edge / Opera over an https:// or http:// URL.\n\nIt does NOT work in Firefox, Safari, or when opening the HTML by double-click (file://). For those browsers, use Import / Export from the menu instead.');
+    return;
+  }
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'test_sync.json',
+      types: [{description: 'JSON', accept: {'application/json': ['.json']}}]
+    });
+    await _idbSet('syncHandle', handle);
+    _syncHandle = handle;
+    _updateSyncMenu();
+    await _syncWriteToFile();
+    alert('Connected to: ' + handle.name + '\n\nFrom now on, every change you make is silently written to this file.\n\nWhen Claude (or anything else) edits this file outside the browser, use "Reload from file" to pull the changes in.');
+  } catch(e){
+    if(e.name !== 'AbortError'){
+      alert('Sync connect failed: ' + e.message);
+    }
+  }
+}
+async function _syncWriteToFile(){
+  if(!_syncHandle) return;
+  try {
+    let perm = await _syncHandle.queryPermission({mode: 'readwrite'});
+    if(perm !== 'granted'){
+      perm = await _syncHandle.requestPermission({mode: 'readwrite'});
+      if(perm !== 'granted'){
+        console.warn('Sync write permission not granted');
+        return;
+      }
+    }
+    const writable = await _syncHandle.createWritable();
+    await writable.write(JSON.stringify(project, null, 2));
+    await writable.close();
+  } catch(e){
+    console.error('Sync write failed:', e);
+  }
+}
+async function syncReload(){
+  if(!_syncHandle){
+    alert('Not connected. Click "Connect to sync file..." first.');
+    return;
+  }
+  try {
+    let perm = await _syncHandle.queryPermission({mode: 'read'});
+    if(perm !== 'granted'){
+      perm = await _syncHandle.requestPermission({mode: 'read'});
+      if(perm !== 'granted'){
+        alert('Read permission not granted.');
+        return;
+      }
+    }
+    const file = await _syncHandle.getFile();
+    const text = await file.text();
+    const loaded = JSON.parse(text);
+    project = loaded;
+    // backwards-compat sweep
+    (project.slds || []).forEach(s => (s.pages || []).forEach(p => {
+      if(!Array.isArray(p.preMeterTaps)) p.preMeterTaps = [];
+      (p.circuits || []).forEach(c => {
+        if(c.mtype === '3ph' || c.mtype === '1ph' || c.mtype === '2ph') c.mtype = 'metered';
+        if(c.section) c.section = String(c.section).toUpperCase().trim();
+      });
+      (p.subBoards || []).forEach(sb => {
+        if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
+      });
+    }));
+    selectedSLDId = project.slds[0]?.id || null;
+    selectedPageId = project.slds[0]?.pages[0]?.id || null;
+    renderSidebar(); renderCanvas(); renderToolbarLogo();
+  } catch(e){
+    alert('Sync reload failed: ' + e.message);
+  }
+}
+async function syncDisconnect(){
+  if(!_syncHandle) return;
+  if(!confirm('Disconnect from ' + _syncHandle.name + '?\nFuture changes will NOT be written to the file.')) return;
+  await _idbDel('syncHandle');
+  _syncHandle = null;
+  _updateSyncMenu();
+}
+async function _initSync(){
+  if(!_fsaaSupported()) return;
+  try {
+    const handle = await _idbGet('syncHandle');
+    if(handle){
+      _syncHandle = handle;
+      _updateSyncMenu();
+    }
+  } catch(e){
+    console.warn('Sync init failed:', e);
+  }
 }
 function saveProject(){
   if(!selectedSLDId){alert('Please select an SLD to export.');return;}
@@ -1863,6 +1992,7 @@ function _openPrintWindow(sld, pages){
 let _toastTimer;
 function autoSave(){
   try{ localStorage.setItem('rms_sld_autosave', JSON.stringify(project)); }catch(e){}
+  if(typeof _syncWriteToFile === 'function' && _syncHandle){ _syncWriteToFile().catch(e=>console.warn('Sync write failed:', e)); }
   const toast = document.getElementById('autosave-toast');
   if(!toast) return;
   toast.style.opacity='1'; clearTimeout(_toastTimer);
@@ -2203,7 +2333,7 @@ tbody tr:nth-child(even) td{background:#f9fafb}
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-tryAutoLoad(); renderSidebar(); renderCanvas(); renderToolbarLogo(); _initDevMode();
+tryAutoLoad(); renderSidebar(); renderCanvas(); renderToolbarLogo(); _initDevMode(); _initSync();
 </script>
 </body>
 </html>
