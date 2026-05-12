@@ -636,10 +636,10 @@ const ROW_AMP_Y      = 30;    // amps label above CB
 const ROW_CB_TOP     = 36;
 const ROW_CB_H       = 20;
 const ROW_CB_BOT     = ROW_CB_TOP + ROW_CB_H;     // 56
-const ROW_CT_CY      = 80;    // CT centre (reserved slot even if no CT)
-const ROW_M_CY       = 116;   // Meter centre (reserved slot even if no meter)
-const ROW_BOX_TOP    = 150;   // load-name box top
-const ROW_BOX_H      = 210;   // load-name box height (taller so vertical text reads cleanly)
+const ROW_CT_CY      = 86;    // CT centre (reserved slot even if no CT) — moved down 6px for label clearance
+const ROW_M_CY       = 140;   // Meter centre — pushed down so vertical labels have a longer column without crowding CT
+const ROW_BOX_TOP    = 180;   // load-name box top
+const ROW_BOX_H      = 160;   // load-name box height — tighter so red metering row has more room
 
 const CT_R = 12;
 const M_R  = 12;
@@ -753,7 +753,11 @@ function buildSchematicSVG(page, sld){
 
   // Bus Y position — reserve extra vertical space ABOVE the bus for pre-meter taps
   const _taps = page.preMeterTaps || [];
-  const tapTotalH = _taps.length * 56;
+  // Pair left + right taps on same row — total rows = max(left count, right count)
+  const _leftTapCount = _taps.filter(t => t.side === 'left').length;
+  const _rightTapCount = _taps.length - _leftTapCount;
+  const _tapRowCount = Math.max(_leftTapCount, _rightTapCount);
+  const tapTotalH = _tapRowCount * 56;
   const busY = TIT_H + NOTE_H + (hasIncomer ? INC_DROP_H + tapTotalH : 30);
 
   // Column geometry
@@ -845,11 +849,17 @@ function buildSchematicSVG(page, sld){
     // Vertical incomer wire (top → bus)
     s += `<line x1="${incX}" y1="${incTop+8}" x2="${incX}" y2="${busY}" stroke="#232C63" stroke-width="2"/>`;
 
-    // Pre-meter taps — render horizontal stubs ABOVE the main CT
-    _taps.forEach((tap, i) => {
-      const tapY = incTop + 24 + i*56;
-      s += _drawPreMeterTap(tap, incX, tapY);
-    });
+    // Pre-meter taps — render horizontal stubs ABOVE the main CT.
+    // Pair left + right on the same row so a Left tap and a Right tap don't waste vertical space.
+    {
+      let leftRow = 0, rightRow = 0;
+      _taps.forEach(tap => {
+        const isLeft = tap.side === 'left';
+        const rowIdx = isLeft ? leftRow++ : rightRow++;
+        const tapY = incTop + 24 + rowIdx*56;
+        s += _drawPreMeterTap(tap, incX, tapY);
+      });
+    }
 
     // Amps label (right of arrow)
     if(page.amps){
