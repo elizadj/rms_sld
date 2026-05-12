@@ -108,6 +108,48 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
 
 /* Zoom slider */
 #zoom-slider{accent-color:var(--accent-mid)}
+
+/* ─── VIEW TABS ────────────────────────────────────────────────────────────── */
+#view-tabs{display:flex;flex-shrink:0;border-right:1px solid var(--border);padding-right:10px;margin-right:6px;gap:2px}
+.view-tab{height:36px;padding:0 14px;font-size:11px;font-family:'Montserrat',sans-serif;font-weight:700;cursor:pointer;border:none;background:transparent;color:var(--text-muted);border-bottom:2px solid transparent;letter-spacing:.5px;text-transform:uppercase}
+.view-tab:hover{color:var(--accent)}
+.view-tab.active{color:var(--accent);border-bottom-color:var(--accent-pink)}
+
+/* ─── REPORT EDITOR ────────────────────────────────────────────────────────── */
+#report-panel{display:none;flex:1;overflow-y:auto;background:#eef0f7}
+.rpt-wrap{max-width:860px;margin:0 auto;padding:20px 24px 60px}
+.rpt-cover{background:#232C63;border-radius:8px 8px 0 0;padding:26px 28px 22px;position:relative;overflow:hidden;margin-bottom:16px;min-height:128px}
+.rpt-cover-art{position:absolute;top:0;right:0;bottom:0;width:40%;background:linear-gradient(145deg,#35679E 0%,#1a2050 100%);border-radius:0 8px 0 64px}
+.rpt-cover-bolt{position:absolute;right:6%;top:50%;transform:translateY(-50%);opacity:.18;z-index:0}
+.rpt-cover-z{position:relative;z-index:1}
+.rpt-cover-eye{font-family:'Montserrat',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c8d0e7;margin-bottom:5px}
+.rpt-cover-h{font-family:'Montserrat',sans-serif;font-size:18px;font-weight:700;color:#fff;line-height:1.2;margin-bottom:10px}
+.rpt-cover-meta{font-size:10px;color:#c8d0e7;line-height:2}
+.rpt-cover-meta b{color:#fff}
+.rpt-sec{background:#fff;border-radius:6px;border:1px solid #d1d5db;margin-bottom:12px;overflow:hidden}
+.rpt-sec-h{background:#232C63;color:#fff;padding:9px 16px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:10px;letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.rpt-sec-b{padding:14px 16px}
+.rpt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rpt-span{grid-column:1/-1}
+.rpt-f{display:flex;flex-direction:column;gap:4px}
+.rpt-f label{font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.rpt-f input,.rpt-f select{border:1px solid var(--border);border-radius:4px;padding:6px 9px;font-size:12px;color:var(--text);background:#fff;font-family:inherit;width:100%;box-sizing:border-box}
+.rpt-f textarea{border:1px solid var(--border);border-radius:4px;padding:6px 9px;font-size:12px;color:var(--text);background:#fff;font-family:inherit;width:100%;resize:vertical;min-height:68px;line-height:1.5;box-sizing:border-box}
+.rpt-f input:focus,.rpt-f select:focus,.rpt-f textarea:focus{outline:none;border-color:var(--accent-mid);box-shadow:0 0 0 2px rgba(35,44,99,.10)}
+.rpt-tbl-wrap{overflow-x:auto;grid-column:1/-1}
+.rpt-t{width:100%;border-collapse:collapse;font-size:11px}
+.rpt-t th{background:#232C63;color:#fff;padding:6px 9px;text-align:left;font-weight:700;font-size:10px;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap}
+.rpt-t td{padding:4px 7px;border-bottom:1px solid #e5e7eb;vertical-align:middle}
+.rpt-t tbody tr:last-child td{border-bottom:none}
+.rpt-t tbody tr:nth-child(even) td{background:#fafafa}
+.rpt-t td input,.rpt-t td select{border:1px solid var(--border);border-radius:3px;padding:3px 6px;font-size:11px;font-family:inherit;background:#fff;box-sizing:border-box;width:100%}
+.rpt-del{width:26px;text-align:center;cursor:pointer;color:#b91c1c;font-size:15px}
+.rpt-del:hover{background:#fef2f2}
+.rpt-add-row{margin-top:8px;grid-column:1/-1;font-size:11px;color:var(--accent-mid);cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+.rpt-add-row:hover{color:var(--accent)}
+
+/* Auto-save toast */
+#autosave-toast{position:fixed;bottom:20px;right:20px;background:#232C63;color:#c8d0e7;font-size:11px;padding:7px 14px;border-radius:4px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999;font-family:'Varela Round',sans-serif}
 @media print{
   /* Force A3 landscape, tight margins so the schematic fills the page */
   @page { size: A3 landscape; margin: 8mm; }
@@ -142,7 +184,10 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
   <div class="sep"></div>
   <button class="tbtn" onclick="printCurrent()">Print Page</button>
   <button class="tbtn" onclick="printAll()">Print All</button>
+  <div class="sep"></div>
+  <button class="tbtn" onclick="exportBlankTemplate()" title="Download a blank Excel template with all headers">Blank Template</button>
 </div>
+<div id="autosave-toast">Saved</div>
 <div id="main">
   <div id="sidebar">
     <div id="sidebar-header">
@@ -153,14 +198,24 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
   </div>
   <div id="canvas-area">
     <div id="canvas-toolbar">
-      <span id="canvas-title">Select a page from the navigator</span>
-      <button class="cbtn" onclick="openAddCircuit()" id="btn-add-circuit" style="display:none">Add Circuit</button>
-      <button class="cbtn" onclick="openAddSubBoard()" id="btn-add-sub" style="display:none">Add Sub-Board</button>
-      <button class="cbtn" onclick="editCurrentMSB()" id="btn-edit-msb" style="display:none">Edit Page</button>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-        <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Zoom</label>
-        <input type="range" id="zoom-slider" min="40" max="200" value="100" style="width:120px" oninput="setZoom(this.value)">
-        <span id="zoom-label" style="font-size:12px;color:var(--text-muted);width:38px;text-align:right">100%</span>
+      <div id="view-tabs">
+        <button class="view-tab active" id="vtab-sld" onclick="switchView('schematic')">Schematic</button>
+        <button class="view-tab" id="vtab-rpt" onclick="switchView('report')">Report</button>
+      </div>
+      <div id="sld-ctls" style="display:flex;flex:1;align-items:center;gap:8px">
+        <span id="canvas-title" style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:13px;color:var(--accent)">Select a page from the navigator</span>
+        <button class="cbtn" onclick="openAddCircuit()" id="btn-add-circuit" style="display:none">Add Circuit</button>
+        <button class="cbtn" onclick="openAddSubBoard()" id="btn-add-sub" style="display:none">Add Sub-Board</button>
+        <button class="cbtn" onclick="editCurrentMSB()" id="btn-edit-msb" style="display:none">Edit Page</button>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Zoom</label>
+          <input type="range" id="zoom-slider" min="40" max="200" value="100" style="width:120px" oninput="setZoom(this.value)">
+          <span id="zoom-label" style="font-size:12px;color:var(--text-muted);width:38px;text-align:right">100%</span>
+        </div>
+      </div>
+      <div id="rpt-ctls" style="display:none;flex:1;align-items:center;justify-content:flex-end;gap:8px">
+        <span style="font-size:11px;color:var(--text-muted)">Electrical Network Audit Report</span>
+        <button class="cbtn" onclick="printReport()">Print Report</button>
       </div>
     </div>
     <div id="canvas-scroll" class="empty">
@@ -169,6 +224,7 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
         <div style="font-size:12px;color:var(--text-muted);line-height:1.6">Click <strong style="color:var(--text)">New SLD</strong> to start a project, or select a page from the navigator on the left to view its schematic.</div>
       </div>
     </div>
+    <div id="report-panel"></div>
   </div>
 </div>
 
@@ -353,6 +409,7 @@ function renderSidebar(){
       </div>
     </div>
   `).join('');
+  autoSave();
 }
 function toggleSLD(id){
   const el=document.getElementById('pages-'+id), tog=document.getElementById('tog-'+id);
@@ -1050,10 +1107,47 @@ function exportExcel(){
   const subData=[['PageNumber','PageName','BusSection','SubBoardName','Amps','Phases','CTRatio','Status','Shops','Notes']];
   sld.pages.forEach((p,i)=>(p.subBoards||[]).forEach(sb=>subData.push([i+1,p.name,sb.section||'',sb.name||'',sb.amps||'',sb.phases||'',sb.ct||'',sb.status||'Active',sb.shops||'',sb.notes||''])));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(subData),'SubBoards');
+  // Report sheet — exports current report data alongside the schematic
+  const r = project.report || {};
+  const rptRows = [
+    ['Section','Field','Value'],
+    ['Cover','Site Name',r.site||sld.name||''],
+    ['Cover','Prepared For',r.prepFor||''],
+    ['Cover','Prepared By',r.by||sld.by||''],
+    ['Cover','Date',r.date||sld.date||''],
+    ['Cover','Reference',r.ref||sld.ref||''],
+    ['Cover','Revision',r.rev||'Draft A'],
+    ['Executive Summary','Summary',r.execSummary||''],
+    ['Executive Summary','Key Findings',r.keyFindings||''],
+    ['Executive Summary','Headline Recommendations',r.headlineRecs||''],
+    ['Scope','1.1 Site',r.scope_site||''],
+    ['Scope','1.2 Objectives',r.scope_obj||''],
+    ['Scope','1.3 In Scope',r.scope_in||''],
+    ['Scope','1.4 Out of Scope',r.scope_out||''],
+    ['Methodology','2.1 Documentation Review',r.method_doc||''],
+    ['Methodology','2.2 Physical Inspection',r.method_insp||''],
+    ['Methodology','2.3 Meter Accuracy Testing',r.method_acc||''],
+    ['Methodology','2.4 Reference Standards',r.method_std||''],
+    ['Network Overview','3. Observations',r.networkObs||''],
+    ['Conclusion','7. Conclusion',r.conclusion||''],
+    ['Appendix A','Single Line Diagrams',r.appendix_a||''],
+    ['Appendix B','Meter Test Records',r.appendix_b||''],
+    ['Appendix C','Photographs',r.appendix_c||''],
+    ['Appendix D','Tenancy Schedule / NMI Register',r.appendix_d||''],
+    [''],
+    ['— Meter Testing Results —','',''],
+    ['Meter #','Tenancy / Location','Measured Error','Tolerance','Result','Action'],
+  ];
+  (r.meterResults||[]).forEach(m=>rptRows.push([m.meter||'',m.location||'',m.error||'','±1.5%',m.result||'',m.action||'']));
+  rptRows.push([''],['— Recommendations —','','']);
+  rptRows.push(['Ref','Recommendation','Owner','Timeframe']);
+  (r.recommendations||[]).forEach(rec=>rptRows.push([rec.ref||'',rec.rec||'',rec.owner||'',rec.timeframe||'']));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rptRows),'Report');
+
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
     ['SLD Metering Schematic Builder — Import Format'],
     [''],
-    ['SHEETS: DrawingInfo | Pages | Circuits | SubBoards'],
+    ['SHEETS: DrawingInfo | Pages | Circuits | SubBoards | Report'],
     [''],
     ['CIRCUIT FIELDS:'],
     ['BusSection','A, B, 1, 2 ... (used when MSB BusType = split)'],
@@ -1216,8 +1310,345 @@ function _openPrintWindow(sld, pages){
   win.focus();
 }
 
+// ─── AUTO-SAVE (localStorage) ────────────────────────────────────────────────
+let _toastTimer;
+function autoSave(){
+  try{ localStorage.setItem('rms_sld_autosave', JSON.stringify(project)); }catch(e){}
+  const toast = document.getElementById('autosave-toast');
+  if(!toast) return;
+  toast.style.opacity='1'; clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>{ toast.style.opacity='0'; }, 1400);
+}
+function tryAutoLoad(){
+  try{
+    const raw = localStorage.getItem('rms_sld_autosave');
+    if(!raw) return false;
+    const p = JSON.parse(raw);
+    if(p && Array.isArray(p.slds) && p.slds.length){ project = p; return true; }
+  }catch(e){}
+  return false;
+}
+
+// ─── BLANK TEMPLATE EXPORT ───────────────────────────────────────────────────
+function exportBlankTemplate(){
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Field','Value'],['Site Name',''],['Address',''],['Drawing Ref',''],['Date',''],['Prepared By',''],['Revision','']]),'DrawingInfo');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['PageNumber','PageName','Description','Amps','Phases','CTRatio','IncomerMeter','IncomerNMI','IncomerRx','BusType','Boundary','Notes']]),'Pages');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['PageNumber','PageName','BusSection','CBSize_A','Phases','CTRatio','Rx','MeterSerial','NMI','kWh','Fx','ShopNumber','TenantName','Status','MeterType','Boundary','Notes']]),'Circuits');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['PageNumber','PageName','BusSection','SubBoardName','Amps','Phases','CTRatio','Status','Shops','Notes']]),'SubBoards');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['Section','Field','Value'],
+    ['Cover','Site Name',''],['Cover','Prepared For',''],['Cover','Prepared By',''],['Cover','Date',''],['Cover','Reference',''],['Cover','Revision','Draft A'],
+    ['Executive Summary','Summary',''],['Executive Summary','Key Findings',''],['Executive Summary','Headline Recommendations',''],
+    ['Scope','1.1 Site',''],['Scope','1.2 Objectives',''],['Scope','1.3 In Scope',''],['Scope','1.4 Out of Scope',''],
+    ['Methodology','2.1 Documentation Review',''],['Methodology','2.2 Physical Inspection',''],['Methodology','2.3 Meter Accuracy Testing',''],['Methodology','2.4 Reference Standards',''],
+    ['Network Overview','3. Observations',''],['Conclusion','7. Conclusion',''],
+    ['Appendix A','Single Line Diagrams',''],['Appendix B','Meter Test Records',''],['Appendix C','Photographs',''],['Appendix D','Tenancy Schedule / NMI Register',''],
+    [''],['— Meter Testing Results —','',''],['Meter #','Tenancy / Location','Measured Error','Tolerance','Result','Action'],
+    [''],['— Recommendations —','',''],['Ref','Recommendation','Owner','Timeframe'],
+  ]),'Report');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['SLD Metering Schematic Builder — Blank Template'],[''],
+    ['Fill in each sheet then import via "Import Excel" in the app.'],
+    ['Sheets: DrawingInfo | Pages | Circuits | SubBoards | Report'],
+  ]),'Instructions');
+  XLSX.writeFile(wb,'SLD_Blank_Template.xlsx');
+}
+
+// ─── REPORT MODULE ────────────────────────────────────────────────────────────
+function switchView(mode){
+  document.getElementById('vtab-sld').classList.toggle('active', mode==='schematic');
+  document.getElementById('vtab-rpt').classList.toggle('active', mode==='report');
+  document.getElementById('canvas-scroll').style.display  = mode==='schematic' ? '' : 'none';
+  document.getElementById('report-panel').style.display   = mode==='report'    ? 'block' : 'none';
+  document.getElementById('sld-ctls').style.display       = mode==='schematic' ? 'flex' : 'none';
+  document.getElementById('rpt-ctls').style.display       = mode==='report'    ? 'flex' : 'none';
+  if(mode === 'report') buildReportEditor();
+}
+function _rptSave(key, val){ (project.report = project.report||{})[key] = val; autoSave(); }
+function _rptVal(id){ return (document.getElementById(id)||{}).value || ''; }
+
+function buildReportEditor(){
+  const sld0 = project.slds[0] || {};
+  const r = project.report || (project.report = {});
+  if(!r._init){
+    r._init = true;
+    r.site    = r.site    || sld0.name || '';  r.prepFor = r.prepFor || '';
+    r.by      = r.by      || sld0.by   || '';  r.ref     = r.ref     || sld0.ref  || '';
+    r.date    = r.date    || sld0.date || '';  r.rev     = r.rev     || 'Draft A';
+    r.revisions    = r.revisions    || [{ rev:'Draft A', date:sld0.date||'', desc:'Initial draft', by:sld0.by||'', approved:'' }];
+    r.distribution = r.distribution || '';    r.execSummary  = r.execSummary  || '';
+    r.keyFindings  = r.keyFindings  || '';    r.headlineRecs = r.headlineRecs || '';
+    r.scope_site   = r.scope_site   || '';    r.scope_obj    = r.scope_obj    || '';
+    r.scope_in     = r.scope_in     || '';    r.scope_out    = r.scope_out    || '';
+    r.method_doc   = r.method_doc   || '';    r.method_insp  = r.method_insp  || '';
+    r.method_acc   = r.method_acc   || '';    r.method_std   = r.method_std   || '';
+    r.networkObs   = r.networkObs   || '';
+    r.meterResults = r.meterResults || [];
+    r.auditOutcomes = r.auditOutcomes || [
+      { objective:'Verify whether all house services are currently metered or can be metered.', finding:'', status:'OPEN' },
+      { objective:'Confirm that Single Line Diagrams (SLDs) are accurate and up to date.',      finding:'', status:'OPEN' },
+      { objective:'Ensure each meter is correctly recording the associated tenancy consumption.',finding:'', status:'OPEN' },
+      { objective:'Test the accuracy of revenue meters across the site.',                        finding:'', status:'OPEN' },
+    ];
+    r.recommendations = r.recommendations || [];
+    r.conclusion = r.conclusion || '';
+    r.appendix_a = r.appendix_a || '';  r.appendix_b = r.appendix_b || '';
+    r.appendix_c = r.appendix_c || '';  r.appendix_d = r.appendix_d || '';
+  }
+
+  document.getElementById('report-panel').innerHTML = `<div class="rpt-wrap">
+  ${rptCoverPrev(r)}
+  ${rptCard('Cover Page', rptCoverFields(r))}
+  ${rptCard('Document Control', rptDocCtrl(r))}
+  ${rptCard('Distribution', `<div class="rpt-span rpt-f"><label>Distribution list (one per line)</label><textarea rows="3" oninput="_rptSave('distribution',this.value)">${esc(r.distribution)}</textarea></div>`)}
+  ${rptCard('Executive Summary', `
+    <div class="rpt-span rpt-f"><label>Summary</label><textarea rows="4" oninput="_rptSave('execSummary',this.value)">${esc(r.execSummary)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Key Findings (one per line)</label><textarea rows="4" oninput="_rptSave('keyFindings',this.value)">${esc(r.keyFindings)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Headline Recommendations (one per line)</label><textarea rows="3" oninput="_rptSave('headlineRecs',this.value)">${esc(r.headlineRecs)}</textarea></div>`)}
+  ${rptCard('1. Scope &amp; Objectives', `
+    <div class="rpt-span rpt-f"><label>1.1 Site</label><textarea rows="2" oninput="_rptSave('scope_site',this.value)">${esc(r.scope_site)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>1.2 Audit Objectives (one per line)</label><textarea rows="3" oninput="_rptSave('scope_obj',this.value)">${esc(r.scope_obj)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>1.3 In Scope (one per line)</label><textarea rows="3" oninput="_rptSave('scope_in',this.value)">${esc(r.scope_in)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>1.4 Out of Scope (one per line)</label><textarea rows="3" oninput="_rptSave('scope_out',this.value)">${esc(r.scope_out)}</textarea></div>`)}
+  ${rptCard('2. Methodology', `
+    <div class="rpt-span rpt-f"><label>2.1 Documentation Review</label><textarea rows="2" oninput="_rptSave('method_doc',this.value)">${esc(r.method_doc)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>2.2 Physical Inspection</label><textarea rows="2" oninput="_rptSave('method_insp',this.value)">${esc(r.method_insp)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>2.3 Meter Accuracy Testing</label><textarea rows="2" oninput="_rptSave('method_acc',this.value)">${esc(r.method_acc)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>2.4 Reference Standards (one per line)</label><textarea rows="3" oninput="_rptSave('method_std',this.value)">${esc(r.method_std)}</textarea></div>`)}
+  ${rptCard('3. Network Overview &amp; Findings', `
+    <div class="rpt-span rpt-f"><label>Observations — one paragraph per MSB (blank line between each)</label><textarea rows="8" oninput="_rptSave('networkObs',this.value)">${esc(r.networkObs)}</textarea></div>`)}
+  ${rptCard('4. Meter Testing Results', rptMeters(r))}
+  ${rptCard('5. Audit Objective Outcomes', rptOutcomes(r))}
+  ${rptCard('6. Recommendations', rptRecs(r))}
+  ${rptCard('7. Conclusion', `
+    <div class="rpt-span rpt-f"><label>Conclusion</label><textarea rows="5" oninput="_rptSave('conclusion',this.value)">${esc(r.conclusion)}</textarea></div>`)}
+  ${rptCard('8. Appendices', `
+    <div class="rpt-span rpt-f"><label>Appendix A — Single Line Diagrams</label><textarea rows="2" oninput="_rptSave('appendix_a',this.value)">${esc(r.appendix_a)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Appendix B — Meter Test Records</label><textarea rows="2" oninput="_rptSave('appendix_b',this.value)">${esc(r.appendix_b)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Appendix C — Photographs</label><textarea rows="2" oninput="_rptSave('appendix_c',this.value)">${esc(r.appendix_c)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Appendix D — Tenancy Schedule / NMI Register</label><textarea rows="2" oninput="_rptSave('appendix_d',this.value)">${esc(r.appendix_d)}</textarea></div>`)}
+</div>`;
+}
+
+function rptCoverPrev(r){
+  const site = r.site || 'Site Name';
+  const prepFor = r.prepFor ? `<b>Prepared for</b>&ensp;${esc(r.prepFor)}<br>`:'';
+  const by      = r.by      ? `<b>Prepared by</b>&ensp;${esc(r.by)}<br>`     :'';
+  const dt      = r.date    ? `<b>Date</b>&ensp;${esc(r.date)}<br>`           :'';
+  const ref     = r.ref     ? `<b>Ref</b>&ensp;${esc(r.ref)}`                :'';
+  return `<div class="rpt-cover" id="rpt-cover-preview">
+    <div class="rpt-cover-art"></div>
+    <div class="rpt-cover-bolt"><svg width="52" height="90" viewBox="0 0 10 20"><polygon points="4,0 10,0 6,9 10,9 0,20 4,11 0,11" fill="#CC3366"/></svg></div>
+    <div class="rpt-cover-z">
+      <div class="rpt-cover-eye">Electrical Network Audit Report</div>
+      <div class="rpt-cover-h" id="rpc-h">${esc(site)}</div>
+      <div class="rpt-cover-meta">${prepFor}${by}${dt}${ref}</div>
+    </div>
+  </div>`;
+}
+
+function rptCard(title, body){
+  return `<div class="rpt-sec">
+    <div class="rpt-sec-h" onclick="const b=this.nextElementSibling;b.style.display=b.style.display==='none'?'':'none'">${title}<span style="opacity:.5;font-size:12px">▾</span></div>
+    <div class="rpt-sec-b"><div class="rpt-grid">${body}</div></div>
+  </div>`;
+}
+
+function rptCoverFields(r){
+  return `
+    <div class="rpt-span rpt-f"><label>Report Title / Site Name</label><input value="${esc(r.site)}" oninput="_rptSave('site',this.value);const h=document.getElementById('rpc-h');if(h)h.textContent=this.value||'Site Name'"></div>
+    <div class="rpt-f"><label>Prepared For (Client)</label><input value="${esc(r.prepFor)}" oninput="_rptSave('prepFor',this.value)"></div>
+    <div class="rpt-f"><label>Prepared By (Technician)</label><input value="${esc(r.by)}" oninput="_rptSave('by',this.value)"></div>
+    <div class="rpt-f"><label>Report Reference</label><input value="${esc(r.ref)}" oninput="_rptSave('ref',this.value)"></div>
+    <div class="rpt-f"><label>Date</label><input type="date" value="${esc(r.date)}" oninput="_rptSave('date',this.value)"></div>
+    <div class="rpt-span rpt-f"><label>Revision</label><input value="${esc(r.rev||'Draft A')}" oninput="_rptSave('rev',this.value)"></div>`;
+}
+
+function rptDocCtrl(r){
+  const rows = (r.revisions||[]).map((row,i)=>`<tr>
+    <td><input value="${esc(row.rev)}" onchange="rptRowSave('revisions',${i},'rev',this.value)"></td>
+    <td><input type="date" value="${esc(row.date)}" onchange="rptRowSave('revisions',${i},'date',this.value)"></td>
+    <td><input value="${esc(row.desc)}" onchange="rptRowSave('revisions',${i},'desc',this.value)"></td>
+    <td><input value="${esc(row.by)}" onchange="rptRowSave('revisions',${i},'by',this.value)"></td>
+    <td><input value="${esc(row.approved)}" onchange="rptRowSave('revisions',${i},'approved',this.value)"></td>
+    <td class="rpt-del" onclick="rptRowDel('revisions',${i})">×</td>
+  </tr>`).join('');
+  return `<div class="rpt-tbl-wrap">
+    <table class="rpt-t"><thead><tr><th>Revision</th><th>Date</th><th>Description</th><th>Prepared by</th><th>Reviewed / Approved</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <span class="rpt-add-row" onclick="rptRowAdd('revisions',{rev:'',date:'',desc:'',by:'',approved:''})">+ Add revision</span>
+  </div>`;
+}
+
+function rptMeters(r){
+  const rows = (r.meterResults||[]).map((row,i)=>`<tr>
+    <td><input value="${esc(row.meter)}" style="width:110px" onchange="rptRowSave('meterResults',${i},'meter',this.value)"></td>
+    <td><input value="${esc(row.location)}" onchange="rptRowSave('meterResults',${i},'location',this.value)"></td>
+    <td><input value="${esc(row.error)}" style="width:65px" onchange="rptRowSave('meterResults',${i},'error',this.value)"></td>
+    <td><select style="width:65px" onchange="rptRowSave('meterResults',${i},'result',this.value)"><option${row.result==='PASS'?' selected':''}>PASS</option><option${row.result==='FAIL'?' selected':''}>FAIL</option></select></td>
+    <td><select style="width:100px" onchange="rptRowSave('meterResults',${i},'action',this.value)"><option${row.action==='Replace'?' selected':''}>Replace</option><option${row.action==='Recalibrate'?' selected':''}>Recalibrate</option><option${row.action==='Monitor'?' selected':''}>Monitor</option><option${row.action==='None'?' selected':''}>None</option></select></td>
+    <td class="rpt-del" onclick="rptRowDel('meterResults',${i})">×</td>
+  </tr>`).join('');
+  return `<div class="rpt-tbl-wrap">
+    <table class="rpt-t"><thead><tr><th>Meter #</th><th>Tenancy / Location</th><th>Error</th><th>Result</th><th>Action</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <span class="rpt-add-row" onclick="rptRowAdd('meterResults',{meter:'',location:'',error:'',result:'FAIL',action:'Replace'})">+ Add meter result</span>
+  </div>`;
+}
+
+function rptOutcomes(r){
+  const opts=['OPEN','PARTIAL','PASS','FAIL','CLOSED'];
+  const rows = (r.auditOutcomes||[]).map((row,i)=>`<tr>
+    <td style="width:36%">${esc(row.objective)}</td>
+    <td><input value="${esc(row.finding)}" onchange="rptRowSave('auditOutcomes',${i},'finding',this.value)"></td>
+    <td style="width:90px"><select style="width:85px" onchange="rptRowSave('auditOutcomes',${i},'status',this.value)">${opts.map(s=>`<option${row.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
+  </tr>`).join('');
+  return `<div class="rpt-tbl-wrap"><table class="rpt-t"><thead><tr><th>Objective</th><th>Finding</th><th style="width:90px">Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function rptRecs(r){
+  const tf=[{v:'immediate',l:'Immediate'},{v:'short',l:'Short Term'},{v:'long',l:'Long Term'}];
+  const rows = (r.recommendations||[]).map((row,i)=>`<tr>
+    <td style="width:50px"><input value="${esc(row.ref)}" style="width:44px" onchange="rptRowSave('recommendations',${i},'ref',this.value)"></td>
+    <td><input value="${esc(row.rec)}" onchange="rptRowSave('recommendations',${i},'rec',this.value)"></td>
+    <td style="width:90px"><input value="${esc(row.owner)}" onchange="rptRowSave('recommendations',${i},'owner',this.value)"></td>
+    <td style="width:100px"><select style="width:95px" onchange="rptRowSave('recommendations',${i},'timeframe',this.value)">${tf.map(o=>`<option value="${o.v}"${row.timeframe===o.v?' selected':''}>${o.l}</option>`).join('')}</select></td>
+    <td class="rpt-del" onclick="rptRowDel('recommendations',${i})">×</td>
+  </tr>`).join('');
+  return `<div class="rpt-tbl-wrap">
+    <table class="rpt-t"><thead><tr><th>Ref</th><th>Recommendation</th><th>Owner</th><th>Timeframe</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <span class="rpt-add-row" onclick="rptRowAdd('recommendations',{ref:'',rec:'',owner:'',timeframe:'immediate'})">+ Add recommendation</span>
+  </div>`;
+}
+
+function rptRowSave(key, idx, field, val){
+  const arr=(project.report||{})[key]; if(arr&&arr[idx]) arr[idx][field]=val; autoSave();
+}
+function rptRowDel(key, idx){
+  const arr=(project.report||{})[key]; if(arr) arr.splice(idx,1); buildReportEditor(); autoSave();
+}
+function rptRowAdd(key, tpl){
+  const r=project.report||(project.report={}); if(!Array.isArray(r[key])) r[key]=[];
+  r[key].push({...tpl}); buildReportEditor();
+  const p=document.getElementById('report-panel'); p.scrollTop=p.scrollHeight; autoSave();
+}
+
+function printReport(){
+  const r = project.report || {};
+  const e2 = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const bullets = s => s ? '<ul>'+String(s).split('\n').filter(l=>l.trim()).map(l=>`<li>${e2(l.replace(/^[-•]\s*/,''))}</li>`).join('')+'</ul>' : '';
+  const paras   = s => s ? String(s).split(/\n\n+/).filter(l=>l.trim()).map(l=>`<p>${e2(l)}</p>`).join('') : '';
+  const has = (...ff) => ff.some(f=>Array.isArray(f)?f.length>0:String(f||'').trim());
+  const stSt = {OPEN:'color:#c2410c',PARTIAL:'color:#a16207',FAIL:'color:#b91c1c',PASS:'color:#166534',CLOSED:'color:#374151'};
+
+  let h = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${e2(r.site||'Audit Report')}</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Varela+Round&display=swap" rel="stylesheet">
+<style>
+@page{size:A4 portrait;margin:18mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Varela Round',Arial,sans-serif;font-size:10pt;color:#333;line-height:1.5}
+h1,h2,h3{font-family:'Montserrat',Arial,sans-serif}
+h2{font-size:12pt;color:#232C63;margin:16pt 0 6pt;padding-bottom:4pt;border-bottom:2px solid #CC3366}
+h3{font-size:10pt;color:#35679E;margin:10pt 0 4pt}
+p{margin-bottom:6pt} ul{margin:4pt 0 8pt 16pt} li{margin-bottom:2pt}
+table{width:100%;border-collapse:collapse;font-size:9pt;margin:6pt 0 10pt}
+thead th{background:#232C63;color:#fff;padding:5pt 8pt;text-align:left;font-family:'Montserrat',Arial,sans-serif;font-size:8pt;text-transform:uppercase;letter-spacing:.3pt}
+tbody td{padding:4pt 8pt;border-bottom:1px solid #e5e7eb;vertical-align:top}
+tbody tr:nth-child(even) td{background:#f9fafb}
+.cover{page-break-after:always;display:flex;flex-direction:column;min-height:250mm}
+.hero{background:#232C63;border-radius:0 0 0 56pt;padding:32pt 32pt 28pt;position:relative;overflow:hidden;margin-bottom:28pt}
+.hero-art{position:absolute;top:0;right:0;bottom:0;width:40%;background:linear-gradient(145deg,#35679E,#1a2050);border-radius:0 0 0 56pt}
+.hero-z{position:relative;z-index:1}
+.eye{font-family:'Montserrat',Arial,sans-serif;font-size:8pt;font-weight:700;letter-spacing:2pt;text-transform:uppercase;color:#c8d0e7;margin-bottom:5pt}
+.site{font-family:'Montserrat',Arial,sans-serif;font-size:22pt;font-weight:700;color:#fff;line-height:1.2;margin-bottom:10pt}
+.meta{font-size:9pt;color:#c8d0e7;line-height:2.2}
+.meta b{color:#fff}
+.cref{margin-top:auto;padding-top:14pt;font-size:8pt;color:#9ca3af;border-top:1px solid #e5e7eb}
+.phdr{display:flex;justify-content:space-between;font-size:8pt;color:#6b7280;padding:4pt 0;border-bottom:1px solid #e5e7eb;margin-bottom:12pt}
+.phdr b{color:#232C63;font-family:'Montserrat',Arial,sans-serif}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>`;
+
+  // Cover
+  h += `<div class="cover"><div class="hero"><div class="hero-art"></div><div class="hero-z">
+    <div class="eye">Electrical Network Audit Report</div>
+    <div class="site">${e2(r.site||'Site Name')}</div>
+    <div class="meta">${r.prepFor?`<b>Prepared for</b>&emsp;${e2(r.prepFor)}<br>`:''}${r.by?`<b>Prepared by</b>&emsp;${e2(r.by)}<br>`:''}${r.date?`<b>Date</b>&emsp;${e2(r.date)}<br>`:''}</div>
+  </div></div>
+  <div class="cref">Report Reference: ${e2(r.ref||'—')} &nbsp;|&nbsp; Revision: ${e2(r.rev||'Draft A')}</div></div>`;
+
+  const phdr = `<div class="phdr"><b>${e2(r.site||'')}</b><span>Electrical Network Audit Report &nbsp;|&nbsp; ${e2(r.ref||'')} &nbsp;|&nbsp; ${e2(r.rev||'')}</span></div>`;
+
+  if(has(r.revisions)){
+    h+=phdr+'<h2>Document Control</h2><table><thead><tr><th>Revision</th><th>Date</th><th>Description</th><th>Prepared by</th><th>Reviewed / Approved</th></tr></thead><tbody>';
+    (r.revisions||[]).forEach(row=>{ h+=`<tr><td>${e2(row.rev)}</td><td>${e2(row.date)}</td><td>${e2(row.desc)}</td><td>${e2(row.by)}</td><td>${e2(row.approved)}</td></tr>`; });
+    h+='</tbody></table>';
+    if(r.distribution) h+=`<h3>Distribution</h3>${bullets(r.distribution)}`;
+  }
+  if(has(r.execSummary,r.keyFindings,r.headlineRecs)){
+    h+='<h2>Executive Summary</h2>';
+    if(r.execSummary)  h+=paras(r.execSummary);
+    if(r.keyFindings)  h+='<h3>Key Findings</h3>'+bullets(r.keyFindings);
+    if(r.headlineRecs) h+='<h3>Headline Recommendations</h3>'+bullets(r.headlineRecs);
+  }
+  if(has(r.scope_site,r.scope_obj,r.scope_in,r.scope_out)){
+    h+='<h2>1. Scope &amp; Objectives</h2>';
+    if(r.scope_site) h+='<h3>1.1 Site</h3>'                    +paras(r.scope_site);
+    if(r.scope_obj)  h+='<h3>1.2 Audit Objectives</h3>'        +bullets(r.scope_obj);
+    if(r.scope_in)   h+='<h3>1.3 In Scope</h3>'                +bullets(r.scope_in);
+    if(r.scope_out)  h+='<h3>1.4 Out of Scope</h3>'            +bullets(r.scope_out);
+  }
+  if(has(r.method_doc,r.method_insp,r.method_acc,r.method_std)){
+    h+='<h2>2. Methodology</h2>';
+    if(r.method_doc)  h+='<h3>2.1 Documentation Review</h3>'   +paras(r.method_doc);
+    if(r.method_insp) h+='<h3>2.2 Physical Inspection</h3>'    +paras(r.method_insp);
+    if(r.method_acc)  h+='<h3>2.3 Meter Accuracy Testing</h3>' +paras(r.method_acc);
+    if(r.method_std)  h+='<h3>2.4 Reference Standards</h3>'    +bullets(r.method_std);
+  }
+  if(has(r.networkObs)) h+='<h2>3. Network Overview &amp; Findings</h2>'+paras(r.networkObs);
+  if(has(r.meterResults)){
+    h+='<h2>4. Meter Testing Results</h2><table><thead><tr><th>Meter #</th><th>Tenancy / Location</th><th>Error</th><th>Tolerance</th><th>Result</th><th>Action</th></tr></thead><tbody>';
+    (r.meterResults||[]).forEach(row=>{
+      const rs=row.result==='FAIL'?'color:#b91c1c;font-weight:700':'color:#166534;font-weight:700';
+      h+=`<tr><td>${e2(row.meter)}</td><td>${e2(row.location)}</td><td>${e2(row.error)}</td><td>±1.5%</td><td style="${rs}">${e2(row.result)}</td><td>${e2(row.action)}</td></tr>`;
+    });
+    h+='</tbody></table>';
+  }
+  if(has(r.auditOutcomes)){
+    h+='<h2>5. Audit Objective Outcomes</h2><table><thead><tr><th>Objective</th><th>Finding</th><th>Status</th></tr></thead><tbody>';
+    (r.auditOutcomes||[]).forEach(row=>{
+      const ss=stSt[row.status]||''; h+=`<tr><td style="width:36%">${e2(row.objective)}</td><td>${e2(row.finding)}</td><td style="${ss};font-weight:700">${e2(row.status)}</td></tr>`;
+    });
+    h+='</tbody></table>';
+  }
+  if(has(r.recommendations)){
+    h+='<h2>6. Recommendations</h2>';
+    ['immediate','short','long'].forEach(tf=>{
+      const lbl={immediate:'6.1 Immediate',short:'6.2 Short Term (1–6 months)',long:'6.3 Long Term (6+ months)'}[tf];
+      const rows=(r.recommendations||[]).filter(x=>x.timeframe===tf); if(!rows.length) return;
+      h+=`<h3>${lbl}</h3><table><thead><tr><th style="width:48pt">Ref</th><th>Recommendation</th><th style="width:80pt">Owner</th></tr></thead><tbody>`;
+      rows.forEach(row=>{ h+=`<tr><td>${e2(row.ref)}</td><td>${e2(row.rec)}</td><td>${e2(row.owner)}</td></tr>`; });
+      h+='</tbody></table>';
+    });
+  }
+  if(has(r.conclusion)) h+='<h2>7. Conclusion</h2>'+paras(r.conclusion);
+  if(has(r.appendix_a,r.appendix_b,r.appendix_c,r.appendix_d)){
+    h+='<h2>8. Appendices</h2>';
+    if(r.appendix_a) h+='<h3>Appendix A — Single Line Diagrams</h3>'          +paras(r.appendix_a);
+    if(r.appendix_b) h+='<h3>Appendix B — Meter Test Records</h3>'             +paras(r.appendix_b);
+    if(r.appendix_c) h+='<h3>Appendix C — Photographs</h3>'                    +paras(r.appendix_c);
+    if(r.appendix_d) h+='<h3>Appendix D — Tenancy Schedule / NMI Register</h3>'+paras(r.appendix_d);
+  }
+  h+=`<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),500));<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){alert('Pop-up blocked — allow pop-ups for this page.');return;}
+  w.document.write(h); w.document.close(); w.focus();
+}
+
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-renderSidebar();renderCanvas();
+tryAutoLoad(); renderSidebar();renderCanvas();
 </script>
 </body>
 </html>
