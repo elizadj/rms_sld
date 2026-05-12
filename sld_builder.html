@@ -769,8 +769,11 @@ function _drawPreMeterTap(tap, incX, tapY){
     const lblAnchor = isLeft ? 'end' : 'start';
     const nm = tap.name || '';
     const sh = tap.shops || '';
-    // Auto "(OUTSIDE EN)" tag above the name
+    // Auto "(OUTSIDE EN)" tag above the name — with white mask in case it sits on the stub or another line
     if(_outsideEN){
+      // White mask: position depends on anchor (end means text ends at lblX; start means it begins at lblX)
+      const maskX = isLeft ? (lblX - 64) : lblX;
+      out += '<rect x="'+maskX+'" y="'+(tapY-22)+'" width="64" height="10" fill="#ffffff"/>';
       out += '<text x="'+lblX+'" y="'+(tapY-14)+'" text-anchor="'+lblAnchor+'" font-size="8" font-weight="bold" fill="#dc2626">(OUTSIDE EN)</text>';
     }
     out += '<text x="'+lblX+'" y="'+(tapY-2)+'" text-anchor="'+lblAnchor+'" font-size="10" font-weight="bold" fill="'+_nameFill+'" style="cursor:pointer" onclick="editPreMeterTap(\''+tap.id+'\')">'+esc(nm)+'</text>';
@@ -1061,8 +1064,9 @@ function buildSchematicSVG(page, sld){
     const bFill   = isCirc ? sc.fill   : (subOffline ? sc.fill : '#eef0f7');   // sub-boards: RMS navy-tinted background
     const bStroke = _isOutsideEN ? '#dc2626' : '#232C63';                       // navy border (or red for Outside EN)
     const bText   = _isOutsideEN ? '#dc2626' : '#000';                          // black text (or red for Outside EN)
-    // Auto "(OUTSIDE EN)" tag above the load-name box
+    // Auto "(OUTSIDE EN)" tag above the load-name box — with white mask to break the spine line
     if(_isOutsideEN){
+      s += `<rect x="${cx - 28}" y="${boxY - 12}" width="56" height="10" fill="#ffffff"/>`;
       s += `<text x="${cx}" y="${boxY - 4}" text-anchor="middle" font-size="7" font-weight="bold" fill="#dc2626">(OUTSIDE EN)</text>`;
     }
     s += `<rect x="${boxX}" y="${boxY}" width="${boxW}" height="${ROW_BOX_H}" fill="${bFill}" stroke="${bStroke}" stroke-width="1.2" style="cursor:pointer" onclick="${isCirc?'editCircuit':'editSub'}('${c.id}')"/>`;
