@@ -494,6 +494,14 @@ body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-co
       <div class="form-group"><label>NMI (optional)</label><input id="tap-nmi" placeholder="e.g. 6203940..."></div>
       <div class="form-group"><label>Rx (optional)</label><input id="tap-rx" placeholder="e.g. 300"></div>
       <div class="form-group"><label>kWh (optional initial reading)</label><input id="tap-kwh" placeholder=""></div>
+      <div class="form-group"><label>Boundary (Embedded Network)</label>
+        <select id="tap-boundary">
+          <option value="">—</option>
+          <option value="inside">Inside EN</option>
+          <option value="outside">Outside EN</option>
+          <option value="mixed">Mixed</option>
+        </select>
+      </div>
       <div class="form-group full"><label>Shops / Tenancies Fed</label><input id="tap-shops" placeholder="e.g. Woolies, Safety"></div>
       <div class="form-group full"><label>Notes</label><textarea id="tap-notes" rows="2" placeholder="Free text"></textarea></div>
     </div>
@@ -682,9 +690,13 @@ function _drawPreMeterTap(tap, incX, tapY){
   const stubEnd = incX + (isLeft ? -STUB_LEN : STUB_LEN);
   const sc = SC[tap.status] || SC['Active'];
   const ph = parseInt(tap.phases) || 3;
+  const _outsideEN = tap.boundary === 'outside';
+  const _stubStroke = _outsideEN ? '#dc2626' : '#232C63';
+  const _cbStroke   = _outsideEN ? '#dc2626' : (sc.stroke||'#232C63');
+  const _nameFill   = _outsideEN ? '#dc2626' : '#000';
   let out = '';
   // Horizontal stub line from incomer wire
-  out += '<line x1="'+incX+'" y1="'+tapY+'" x2="'+stubEnd+'" y2="'+tapY+'" stroke="#232C63" stroke-width="2"/>';
+  out += '<line x1="'+incX+'" y1="'+tapY+'" x2="'+stubEnd+'" y2="'+tapY+'" stroke="'+_stubStroke+'" stroke-width="2"/>';
   // Phase ticks on stub
   const tickCx = incX + (isLeft ? -15 : 15);
   for(let t=0;t<ph;t++){
@@ -698,9 +710,9 @@ function _drawPreMeterTap(tap, incX, tapY){
   }
   // CB box
   const cbX = incX + (isLeft ? -58 : 58);
-  out += '<rect x="'+(cbX-10)+'" y="'+(tapY-7)+'" width="20" height="14" fill="'+(sc.fill||'#fff')+'" stroke="'+(sc.stroke||'#232C63')+'" stroke-width="1.2"/>';
-  out += '<line x1="'+(cbX-8)+'" y1="'+(tapY-5)+'" x2="'+(cbX+8)+'" y2="'+(tapY+5)+'" stroke="'+(sc.stroke||'#232C63')+'" stroke-width="1"/>';
-  out += '<line x1="'+(cbX+8)+'" y1="'+(tapY-5)+'" x2="'+(cbX-8)+'" y2="'+(tapY+5)+'" stroke="'+(sc.stroke||'#232C63')+'" stroke-width="1"/>';
+  out += '<rect x="'+(cbX-10)+'" y="'+(tapY-7)+'" width="20" height="14" fill="'+(sc.fill||'#fff')+'" stroke="'+_cbStroke+'" stroke-width="1.2"/>';
+  out += '<line x1="'+(cbX-8)+'" y1="'+(tapY-5)+'" x2="'+(cbX+8)+'" y2="'+(tapY+5)+'" stroke="'+_cbStroke+'" stroke-width="1"/>';
+  out += '<line x1="'+(cbX+8)+'" y1="'+(tapY-5)+'" x2="'+(cbX-8)+'" y2="'+(tapY+5)+'" stroke="'+_cbStroke+'" stroke-width="1"/>';
   // Optional CT
   if(tap.ct){
     const ctX = incX + (isLeft ? -80 : 80);
@@ -728,7 +740,7 @@ function _drawPreMeterTap(tap, incX, tapY){
     const lblAnchor = isLeft ? 'end' : 'start';
     const nm = tap.name || '';
     const sh = tap.shops || '';
-    out += '<text x="'+lblX+'" y="'+(tapY-2)+'" text-anchor="'+lblAnchor+'" font-size="10" font-weight="bold" fill="#000" style="cursor:pointer" onclick="editPreMeterTap(\''+tap.id+'\')">'+esc(nm)+'</text>';
+    out += '<text x="'+lblX+'" y="'+(tapY-2)+'" text-anchor="'+lblAnchor+'" font-size="10" font-weight="bold" fill="'+_nameFill+'" style="cursor:pointer" onclick="editPreMeterTap(\''+tap.id+'\')">'+esc(nm)+'</text>';
     if(sh){
       out += '<text x="'+lblX+'" y="'+(tapY+10)+'" text-anchor="'+lblAnchor+'" font-size="8" fill="#555">'+esc(sh)+'</text>';
     }
@@ -948,8 +960,14 @@ function buildSchematicSVG(page, sld){
     // CB box (centred on cx)
     const cbX = cx - 11;
     const cbY = busY + ROW_CB_TOP;
-    const cbFill   = isCirc ? sc.fill   : (sc.fill==='#ffffff' ? '#c8d9ef' : sc.fill);
-    const cbStroke = isCirc ? sc.stroke : (sc.stroke==='#222'  ? '#35679E' : sc.stroke);
+    const _isOutsideEN = c.boundary === 'outside';
+    let cbFill   = isCirc ? sc.fill   : (sc.fill==='#ffffff' ? '#c8d9ef' : sc.fill);
+    let cbStroke = isCirc ? sc.stroke : (sc.stroke==='#222'  ? '#35679E' : sc.stroke);
+    if(_isOutsideEN){
+      // Only override pale/white fills — keep status-specific fills intact
+      if(cbFill === '#ffffff' || cbFill === '#fff' || cbFill === '#c8d9ef') cbFill = '#fee2e2';
+      cbStroke = '#dc2626';
+    }
     s += `<rect x="${cbX}" y="${cbY}" width="22" height="${ROW_CB_H}" fill="${cbFill}" stroke="${cbStroke}" stroke-width="1.5"/>`;
     s += `<line x1="${cbX+2}" y1="${cbY+2}" x2="${cbX+20}" y2="${cbY+ROW_CB_H-2}" stroke="${cbStroke}" stroke-width="1.1"/>`;
     s += `<line x1="${cbX+20}" y1="${cbY+2}" x2="${cbX+2}" y2="${cbY+ROW_CB_H-2}" stroke="${cbStroke}" stroke-width="1.1"/>`;
@@ -1008,8 +1026,8 @@ function buildSchematicSVG(page, sld){
     const boxY = busY + ROW_BOX_TOP;
     const subOffline = !isCirc && c.status && c.status!=='Active';
     const bFill   = isCirc ? sc.fill   : (subOffline ? sc.fill : '#eef0f7');   // sub-boards: RMS navy-tinted background
-    const bStroke = '#232C63';                                                  // navy border for all boxes
-    const bText   = '#000';                                                     // black text inside all boxes
+    const bStroke = _isOutsideEN ? '#dc2626' : '#232C63';                       // navy border (or red for Outside EN)
+    const bText   = _isOutsideEN ? '#dc2626' : '#000';                          // black text (or red for Outside EN)
     s += `<rect x="${boxX}" y="${boxY}" width="${boxW}" height="${ROW_BOX_H}" fill="${bFill}" stroke="${bStroke}" stroke-width="1.2" style="cursor:pointer" onclick="${isCirc?'editCircuit':'editSub'}('${c.id}')"/>`;
 
     // Vertical text — stack columns left→right inside box, each reading bottom-to-top
@@ -1342,6 +1360,7 @@ function openAddPreMeterTap(){
   document.getElementById('tap-phases').value='3';
   document.getElementById('tap-side').value='left';
   document.getElementById('tap-status').value='Active';
+  document.getElementById('tap-boundary').value='';
   openModal('modal-tap');
   setTimeout(()=>document.getElementById('tap-name').focus(),100);
 }
@@ -1362,6 +1381,7 @@ function editPreMeterTap(tapId){
   document.getElementById('tap-nmi').value=t.nmi||'';
   document.getElementById('tap-rx').value=t.rx||'';
   document.getElementById('tap-kwh').value=t.kwh||'';
+  document.getElementById('tap-boundary').value=t.boundary||'';
   document.getElementById('tap-shops').value=t.shops||'';
   document.getElementById('tap-notes').value=t.notes||'';
   openModal('modal-tap');
@@ -1384,6 +1404,7 @@ function savePreMeterTap(){
     nmi:document.getElementById('tap-nmi').value.trim(),
     rx:document.getElementById('tap-rx').value.trim(),
     kwh:document.getElementById('tap-kwh').value.trim(),
+    boundary:document.getElementById('tap-boundary').value,
     shops:document.getElementById('tap-shops').value.trim(),
     notes:document.getElementById('tap-notes').value.trim()
   };
@@ -1876,6 +1897,7 @@ async function syncReload(){
     // backwards-compat sweep
     (project.slds || []).forEach(s => (s.pages || []).forEach(p => {
       if(!Array.isArray(p.preMeterTaps)) p.preMeterTaps = [];
+      (p.preMeterTaps || []).forEach(t => { if(typeof t.boundary !== 'string') t.boundary = ''; });
       (p.circuits || []).forEach(c => {
         if(c.mtype === '3ph' || c.mtype === '1ph' || c.mtype === '2ph') c.mtype = 'metered';
         if(c.section) c.section = String(c.section).toUpperCase().trim();
@@ -1936,6 +1958,7 @@ function loadProject(e){
       // backwards-compat sweep on the incoming data
       incomingSLDs.forEach(s=>(s.pages||[]).forEach(p=>{
         if(!Array.isArray(p.preMeterTaps)) p.preMeterTaps = [];
+        (p.preMeterTaps||[]).forEach(t=>{ if(typeof t.boundary !== 'string') t.boundary = ''; });
         (p.circuits||[]).forEach(c=>{
           if(c.mtype==='3ph'||c.mtype==='1ph'||c.mtype==='2ph') c.mtype='metered';
           if(c.section) c.section = String(c.section).toUpperCase().trim();
@@ -2038,6 +2061,7 @@ function tryAutoLoad(){
       // backwards-compat: ensure each page has a preMeterTaps array
       p.slds.forEach(s=>(s.pages||[]).forEach(pg=>{
         if(!Array.isArray(pg.preMeterTaps)) pg.preMeterTaps = [];
+        (pg.preMeterTaps||[]).forEach(t=>{ if(typeof t.boundary !== 'string') t.boundary = ''; });
       }));
       project = p; return true;
     }
