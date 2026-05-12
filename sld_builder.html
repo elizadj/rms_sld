@@ -515,6 +515,16 @@ body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-co
 <script>
 // ─── DATA MODEL ───────────────────────────────────────────────────────────────
 let project = { name:'New Project', slds:[] };
+// Track which SLDs are collapsed in the sidebar so the state survives re-renders.
+// Hydrated from localStorage on load, persisted on every toggle.
+let collapsedSLDs = new Set();
+try {
+  const _cs = localStorage.getItem('rms_sld_collapsed');
+  if(_cs) collapsedSLDs = new Set(JSON.parse(_cs));
+} catch(e){}
+function _saveCollapsed(){
+  try { localStorage.setItem('rms_sld_collapsed', JSON.stringify(Array.from(collapsedSLDs))); } catch(e){}
+}
 let selectedSLDId = null;
 let selectedPageId = null;
 let currentZoom = 100;
@@ -540,13 +550,15 @@ function renderSidebar(){
     tree.innerHTML='<div style="padding:20px 14px;color:var(--text-muted);font-size:12px;text-align:center">No projects yet.<br><br>Click <b>New SLD</b> to start.</div>';
     return;
   }
-  tree.innerHTML = project.slds.map(sld=>`
+  tree.innerHTML = project.slds.map(sld=>{
+    const _isCollapsed = collapsedSLDs.has(sld.id);
+    return `
     <div class="tree-sld">
       <div class="tree-sld-name" onclick="toggleSLD('${sld.id}')" oncontextmenu="showCtx(event,'sld','${sld.id}')">
-        <span class="toggle" id="tog-${sld.id}">▼</span>
+        <span class="toggle" id="tog-${sld.id}">${_isCollapsed ? '▶' : '▼'}</span>
         <span>${esc(sld.name)}</span>
       </div>
-      <div id="pages-${sld.id}">
+      <div id="pages-${sld.id}" style="${_isCollapsed ? 'display:none' : ''}">
         ${sld.pages.map(pg=>`
           <div class="tree-page">
             <div class="tree-page-name ${selectedPageId===pg.id?'active':''}"
@@ -560,13 +572,22 @@ function renderSidebar(){
         <span class="tree-add" onclick="openNewPage('${sld.id}')">+ Add Page</span>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   autoSave();
 }
 function toggleSLD(id){
   const el=document.getElementById('pages-'+id), tog=document.getElementById('tog-'+id);
-  if(el.style.display==='none'){el.style.display='block';tog.textContent='▼';}
-  else{el.style.display='none';tog.textContent='▶';}
+  if(collapsedSLDs.has(id)){
+    collapsedSLDs.delete(id);
+    if(el) el.style.display='block';
+    if(tog) tog.textContent='▼';
+  } else {
+    collapsedSLDs.add(id);
+    if(el) el.style.display='none';
+    if(tog) tog.textContent='▶';
+  }
+  _saveCollapsed();
 }
 function selectPage(sldId,pageId){
   selectedSLDId=sldId; selectedPageId=pageId;
