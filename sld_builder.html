@@ -472,6 +472,11 @@ body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-co
         </select>
       </div>
       <div class="form-group full"><label>Shops / Tenancies Served</label><input id="sub-shops" placeholder="e.g. T49, T30, T31, K5"></div>
+      <div class="form-group full">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;text-transform:none;letter-spacing:0;font-weight:600;color:var(--text)">
+          <input type="checkbox" id="sub-show-notes"> Show notes on schematic
+        </label>
+      </div>
       <div class="form-group full"><label>Notes</label><input id="sub-notes" placeholder="e.g. continuation on page 6..."></div>
     </div>
     <div class="modal-actions">
@@ -1090,6 +1095,13 @@ function buildSchematicSVG(page, sld){
       const lx = startLx + idx*linePitch;
       s += vText(boxX + lx, baseY, clipText(L, maxTextHpx, 10), {fontSize:10, fontWeight:'bold', fill:bText});
     });
+
+    // Sub-board note display (when showNotes is ticked)
+    if(!isCirc && c.showNotes && c.notes){
+      const noteY = boxY + ROW_BOX_H + 12;
+      const noteText = clipText(c.notes, boxW + 20, 8);
+      s += `<text x="${cx}" y="${noteY}" text-anchor="middle" font-size="8" font-style="italic" fill="#35679E">${esc(noteText)}</text>`;
+    }
   });
 
   // ── FOOTER (single title block — Site | MSB | Date | By | Rev) ──────────────
@@ -1316,6 +1328,7 @@ function openAddSubBoard(){
   document.getElementById('modal-sub-title').textContent='Add Sub-Board / Feeder Set';
   document.getElementById('btn-delete-sub').style.display='none';
   ['sub-name','sub-amps','sub-ct','sub-shops','sub-notes','sub-section','sub-boundary'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('sub-show-notes').checked = false;
   document.getElementById('sub-phases').value='3';
   document.getElementById('sub-status').value='Active';
   const page = getCurrentPage();
@@ -1338,6 +1351,7 @@ function editSub(subId){
   document.getElementById('sub-shops').value=sb.shops||'';
   document.getElementById('sub-notes').value=sb.notes||'';
   document.getElementById('sub-boundary').value=sb.boundary||'';
+  document.getElementById('sub-show-notes').checked = !!sb.showNotes;
   openModal('modal-sub');
 }
 function saveSub(){
@@ -1353,7 +1367,8 @@ function saveSub(){
     status:document.getElementById('sub-status').value,
     shops:document.getElementById('sub-shops').value.trim(),
     notes:document.getElementById('sub-notes').value.trim(),
-    boundary:document.getElementById('sub-boundary').value
+    boundary:document.getElementById('sub-boundary').value,
+    showNotes:document.getElementById('sub-show-notes').checked
   };
   if(editingId){const sb=page.subBoards.find(x=>x.id===editingId);if(sb)Object.assign(sb,data);}
   else page.subBoards.push({id:uid(),...data});
@@ -1774,7 +1789,8 @@ function importExcel(e){
           section:(r.BusSection||'').toString().toUpperCase().trim(),
           shops:r.Shops||'',
           notes:r.Notes||'',
-          boundary:r.Boundary||''
+          boundary:r.Boundary||'',
+          showNotes:false
         });
       });
       const sld={id:uid(),name:info['Site Name']||file.name.replace(/\.xlsx?$/i,''),desc:info['Address']||'',ref:info['Drawing Ref']||'',date:info['Date']||'',by:info['Prepared By']||'',rev:info['Revision']||'',pages};
@@ -1922,6 +1938,7 @@ async function syncReload(){
       (p.subBoards || []).forEach(sb => {
         if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
         if(typeof sb.boundary !== 'string') sb.boundary = '';
+        if(typeof sb.showNotes !== 'boolean') sb.showNotes = false;
       });
     }));
     selectedSLDId = project.slds[0]?.id || null;
@@ -1984,6 +2001,7 @@ function loadProject(e){
         (p.subBoards||[]).forEach(sb=>{
           if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
           if(typeof sb.boundary !== 'string') sb.boundary = '';
+          if(typeof sb.showNotes !== 'boolean') sb.showNotes = false;
         });
       }));
       // Merge: update existing SLDs by id, append new ones. Mirrors importExcel().
@@ -2081,7 +2099,7 @@ function tryAutoLoad(){
       p.slds.forEach(s=>(s.pages||[]).forEach(pg=>{
         if(!Array.isArray(pg.preMeterTaps)) pg.preMeterTaps = [];
         (pg.preMeterTaps||[]).forEach(t=>{ if(typeof t.boundary !== 'string') t.boundary = ''; });
-        (pg.subBoards||[]).forEach(sb=>{ if(typeof sb.boundary !== 'string') sb.boundary = ''; });
+        (pg.subBoards||[]).forEach(sb=>{ if(typeof sb.boundary !== 'string') sb.boundary = ''; if(typeof sb.showNotes !== 'boolean') sb.showNotes = false; });
       }));
       project = p; return true;
     }
