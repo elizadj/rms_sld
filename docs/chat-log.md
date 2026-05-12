@@ -4,6 +4,20 @@ Short summaries of each working session. Newest first. Keep entries brief — li
 
 ---
 
+## 2026-05-12 — Report module, auto-save, blank template
+
+Changes made to [sld_builder.html](../sld_builder.html):
+
+- **Report tab:** New "Schematic / Report" view toggle in the canvas toolbar. The Report panel is a full Electrical Network Audit Report editor with collapsible sections: Cover Page, Document Control (revision history table), Distribution, Executive Summary, Scope & Objectives, Methodology, Network Overview & Findings, Meter Testing Results, Audit Objective Outcomes, Recommendations (Immediate / Short / Long term), Conclusion, Appendices.
+- **Print Report:** Generates a print-ready A4 HTML window styled with the RMS brand theme. Empty sections are omitted automatically — no blank headings.
+- **Report → Excel:** A `Report` sheet is appended to the SLD workbook on every "Export Excel" action, including meter results and recommendations tables.
+- **Auto-save:** Project state is written to `localStorage` after every sidebar render, modal save, and report field change. A brief navy "Saved" toast confirms each write. On page load, `tryAutoLoad()` restores the last session.
+- **Blank Template:** New toolbar button ("Blank Template") downloads a ready-to-fill Excel workbook with all five sheets and header rows.
+
+Commit: `296aa42` — pushed to `main`.
+
+---
+
 ## 2026-05-11 — RMS brand theme applied to UI + SLD diagram
 
 Changes made to [sld_builder.html](../sld_builder.html):
