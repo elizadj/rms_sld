@@ -1096,7 +1096,7 @@ function buildSchematicSVG(page, sld){
         out.slice(0, remaining).forEach(L => lines.push(L));
       }
     } else {
-      // Sub-board: name only (also wrap to <=3 lines)
+      // Sub-board: name + optional shops (when showShops is ticked) as additional vertical columns
       if(c.name){
         const words = c.name.split(/\s+/);
         let buf = '';
@@ -1109,6 +1109,10 @@ function buildSchematicSVG(page, sld){
         if(buf) out.push(buf);
         out.slice(0, MAX_LINES).forEach(L => lines.push(L));
       }
+      // Shops as an extra column INSIDE the box (when showShops is ticked) — respect MAX_LINES cap
+      if(c.showShops && c.shops && lines.length < MAX_LINES){
+        lines.push(c.shops);
+      }
     }
 
     // Render lines vertically (rotated -90), centred horizontally inside box
@@ -1119,16 +1123,10 @@ function buildSchematicSVG(page, sld){
       s += vText(boxX + lx, baseY, clipText(L, maxTextHpx, 10), {fontSize:10, fontWeight:'bold', fill:bText});
     });
 
-    // Sub-board shops/notes display (when respective Show on schematic is ticked)
-    if(!isCirc){
-      let _extraY = boxY + ROW_BOX_H + 12;
-      if(c.showShops && c.shops){
-        s += `<text x="${cx}" y="${_extraY}" text-anchor="middle" font-size="8" font-style="italic" fill="#35679E">${esc(clipText(c.shops, boxW + 30, 8))}</text>`;
-        _extraY += 12;
-      }
-      if(c.showNotes && c.notes){
-        s += `<text x="${cx}" y="${_extraY}" text-anchor="middle" font-size="8" font-style="italic" fill="#35679E">${esc(clipText(c.notes, boxW + 30, 8))}</text>`;
-      }
+    // Sub-board notes display (below box). Shops is now rendered INSIDE the box as a column.
+    if(!isCirc && c.showNotes && c.notes){
+      const _noteY = boxY + ROW_BOX_H + 12;
+      s += `<text x="${cx}" y="${_noteY}" text-anchor="middle" font-size="8" font-style="italic" fill="#35679E">${esc(clipText(c.notes, boxW + 30, 8))}</text>`;
     }
   });
 
