@@ -386,6 +386,11 @@ body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-co
       <div class="form-group"><label>Network Boundary</label>
         <select id="page-boundary"><option value="">Not specified</option><option value="inside">Inside Embedded Network (EN)</option><option value="outside">Outside Embedded Network (EN)</option><option value="mixed">Mixed EN / Non-EN</option></select>
       </div>
+      <div class="form-group full">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;text-transform:none;letter-spacing:0;font-weight:600;color:var(--text)">
+          <input type="checkbox" id="page-show-notes" checked> Show notes on schematic
+        </label>
+      </div>
       <div class="form-group full"><label>Notes (shown on diagram)</label><input id="page-notes" placeholder="e.g. Busbar split in trunking / channel..."></div>
     </div>
     <div class="modal-actions">
@@ -760,7 +765,7 @@ function buildSchematicSVG(page, sld){
   const rows = [...allCircuits, ...allSubBoards];
 
   const hasIncomer   = !!(page.amps || page.ct || page.meter);
-  const hasPageNotes = !!page.notes;
+  const hasPageNotes = !!page.notes && page.showNotes !== false;
   const NOTE_H = hasPageNotes ? NOTE_BAND_H : 0;
 
   // Bus Y position — reserve extra vertical space ABOVE the bus for pre-meter taps
@@ -1191,6 +1196,7 @@ function openNewPage(sldId,editPageId){
   document.getElementById('page-bustype').value=page?.bustype||'solid';
   document.getElementById('page-boundary').value=page?.boundary||'';
   document.getElementById('page-notes').value=page?.notes||'';
+  document.getElementById('page-show-notes').checked=(page?.showNotes!==false);
   document.getElementById('btn-delete-page').style.display=editPageId?'':'none';
   openModal('modal-page');
   setTimeout(()=>document.getElementById('page-name').focus(),100);
@@ -1200,7 +1206,7 @@ function savePage(){
   if(!name){alert('Please enter a page/MSB name.');return;}
   const sld=project.slds.find(s=>s.id===selectedSLDId);
   if(!sld)return;
-  const data={name,desc:document.getElementById('page-desc').value.trim(),amps:document.getElementById('page-amps').value.trim(),phases:document.getElementById('page-phases').value,ct:document.getElementById('page-ct').value.trim(),meter:document.getElementById('page-meter').value.trim(),nmi:document.getElementById('page-nmi').value.trim(),rx:document.getElementById('page-rx').value.trim(),bustype:document.getElementById('page-bustype').value,boundary:document.getElementById('page-boundary').value,notes:document.getElementById('page-notes').value.trim()};
+  const data={name,desc:document.getElementById('page-desc').value.trim(),amps:document.getElementById('page-amps').value.trim(),phases:document.getElementById('page-phases').value,ct:document.getElementById('page-ct').value.trim(),meter:document.getElementById('page-meter').value.trim(),nmi:document.getElementById('page-nmi').value.trim(),rx:document.getElementById('page-rx').value.trim(),bustype:document.getElementById('page-bustype').value,boundary:document.getElementById('page-boundary').value,notes:document.getElementById('page-notes').value.trim(),showNotes:document.getElementById('page-show-notes').checked};
   if(editingId){
     const page=sld.pages.find(p=>p.id===editingId);
     if(page) Object.assign(page,data);
