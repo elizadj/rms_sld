@@ -10,10 +10,22 @@ No build step, no server, no dependencies installed locally. Open `sld_builder.h
 
 | File | Purpose |
 |---|---|
-| [sld_builder.html](sld_builder.html) | The entire application — HTML + embedded CSS + embedded JS (~1212 lines). |
-| [SLD.JSON.json](SLD.JSON.json) | Saved project data. Currently contains **Wendouree Shopping Centre** (drawing ref `SLD-WDR-202604-R0`, prepared by Peter de Kock, 2026-04-23). |
-| [WENDOUREE_Schematic_CORRECTED.xlsx](WENDOUREE_Schematic_CORRECTED.xlsx) | Reference Excel file in the app's import/export format. |
+| [sld_builder.html](sld_builder.html) | The entire application — HTML + embedded CSS + embedded JS. |
+| [Template_Schematic.xlsx](Template_Schematic.xlsx) | Reference snapshot of the **Blank Template** that the app's *"Blank Template"* button produces. Used as a visual reference for the xlsx import/export sheet structure (DrawingInfo, Pages, Circuits, SubBoards, Report, Instructions). Contains **no data** — headers and scaffolding only. |
 | [docs/](docs/) | Planning notes, chat summaries, and design decisions. See files below. |
+
+### Source of truth for project data
+
+The user's working project data lives in the **browser's localStorage** (`rms_sld_autosave`) on whichever machine has the app open. Test/sample JSON files may live alongside this README from time to time but are not the canonical source — they are exported snapshots.
+
+**When the schema changes** (e.g. adding a new field to circuits or pages):
+
+1. Update the code in `sld_builder.html` (data model, render, modal HTML, import, export, Blank Template).
+2. Update `Template_Schematic.xlsx` to match — it must mirror the `exportBlankTemplate()` output exactly. Simplest path: regenerate via a Python script using the headers from the updated function.
+3. Ensure `loadProject()` and `importExcel()` default any missing fields to safe values for backwards compatibility with existing exports.
+4. Test by Import → JSON or Import → Excel of any prior file in the updated app — old data should load cleanly with new fields defaulting to empty.
+
+xlsx files in this folder are reference snapshots only — never edited by hand. Regenerate from the running app if you want a fresh export.
 
 ### docs/ contents
 
@@ -62,7 +74,7 @@ Every record gets a generated `id` of the form `id_<n>_<base36-timestamp>` from 
 1. **Project navigator** (left sidebar) — tree of SLDs and their Pages. Right-click for context menu (Edit / Add Circuit / Add Sub-Board / Delete).
 2. **Canvas** (centre) — live SVG rendering of the selected page. Zoom 40–200% via the slider.
 3. **Modals** — New SLD, Add Page (MSB), Add Circuit, Add Sub-Board. Each modal doubles as the Edit form when launched from a context menu.
-4. **Import / Export** — Excel (4 sheets: DrawingInfo, Pages, Circuits, SubBoards, plus an Instructions sheet on export) and JSON (full project).
+4. **Import / Export** — two toolbar dropdowns (Import ▾ / Export ▾), each offering Excel (.xlsx) and JSON (.json). Excel export is **per-SLD** (uses current `selectedSLDId`). JSON export currently dumps the entire project (all SLDs together) — known asymmetry vs Excel.
 5. **Print** — A3 landscape, one page or all pages. Opens a print window with embedded `@page` rules.
 
 ### Rendering conventions (from [sld_builder.html:387-756](sld_builder.html#L387-L756))

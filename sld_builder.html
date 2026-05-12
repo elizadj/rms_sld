@@ -34,6 +34,9 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
 #toolbar{background:#232C63;color:#e5e7eb;padding:0 14px;height:44px;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:nowrap;border-bottom:2px solid #1a2050}
 #toolbar .logo{font-family:'Montserrat',sans-serif;font-weight:700;font-size:14px;color:#ffffff;margin-right:14px;white-space:nowrap;letter-spacing:.4px}
 #toolbar .logo::before{content:"";display:inline-block;width:14px;height:14px;background:#CC3366;clip-path:polygon(40% 0,100% 0,60% 45%,100% 45%,0 100%,40% 55%,0 55%);margin-right:8px;vertical-align:-2px}
+#toolbar .logo.logo-custom::before{display:none}
+#toolbar .logo.logo-custom{padding:3px 8px;background:#ffffff;border-radius:5px;display:inline-flex;align-items:center;line-height:0;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+#toolbar .logo.logo-custom img,#toolbar .logo.logo-custom svg{height:28px;width:auto;vertical-align:middle;display:inline-block}
 .tbtn{background:transparent;color:#cdd3f0;border:1px solid transparent;padding:5px 11px;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap;font-family:inherit;line-height:1.4}
 .tbtn:hover{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.20);color:#fff}
 .tbtn.primary{background:#35679E;border-color:#35679E;color:#fff}
@@ -48,6 +51,21 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
 .dropdown-menu.open{display:block}
 .dropdown-item{padding:8px 14px;color:#cdd3f0;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;line-height:1.4}
 .dropdown-item:hover{background:rgba(255,255,255,.10);color:#fff}
+.dropdown-item.disabled{color:#5a6087;cursor:not-allowed}
+.dropdown-item.disabled:hover{background:none;color:#5a6087}
+.menu-btn{font-size:18px;padding:3px 12px;line-height:1}
+.menu-panel{min-width:230px;padding:6px 0}
+.settings-tab{padding:8px 14px;font-size:11px;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:0.4px;font-family:'Montserrat',sans-serif}
+.settings-tab.active{color:var(--accent);border-bottom-color:var(--accent-pink)}
+.settings-tab:hover{color:var(--accent)}
+.settings-pane label{font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.3px}
+.settings-pane input[type=text], .settings-pane textarea{font-family:'Varela Round',Arial,sans-serif;font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;width:100%}
+.settings-pane textarea{font-family:'Courier New',monospace;font-size:11px;resize:vertical}
+.logo-pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-family:'Varela Round',Arial,sans-serif;font-size:12px}
+.logo-pos-grid label{display:flex;align-items:center;gap:6px;text-transform:none;letter-spacing:0;font-weight:400;color:var(--text);cursor:pointer;padding:4px 8px;border:1px solid var(--border-soft);border-radius:4px}
+.logo-pos-grid label:has(input:checked){border-color:var(--accent-mid);background:var(--row-active)}
+.dropdown-section-header{padding:8px 14px 4px;font-size:9px;text-transform:uppercase;letter-spacing:0.6px;color:#8b94c4;font-weight:600;font-family:'Montserrat',Arial,sans-serif}
+.dropdown-divider{height:1px;background:rgba(255,255,255,0.10);margin:4px 0}
 
 #main{display:flex;flex:1;overflow:hidden;background:var(--bg-alt)}
 
@@ -172,34 +190,99 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
 </head>
 <body>
 <div id="toolbar">
+  <div class="dropdown">
+    <button class="tbtn menu-btn" onclick="toggleDropdown('dd-menu', event)" title="Menu">☰</button>
+    <div class="dropdown-menu menu-panel" id="dd-menu">
+      <div class="dropdown-section-header">Project</div>
+      <div class="dropdown-item" onclick="openNewSLD();closeDropdowns()">New SLD…</div>
+      <div class="dropdown-item" onclick="openNewPage();closeDropdowns()">Add Page…</div>
+      <div class="dropdown-item" onclick="openAddPreMeterTap();closeDropdowns()">Add Pre-Meter Tap…</div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-section-header">Import</div>
+      <div class="dropdown-item" onclick="importExcelClick();closeDropdowns()">From Excel (.xlsx)</div>
+      <div class="dropdown-item" onclick="loadProjectClick();closeDropdowns()">From JSON (.json)</div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-section-header">Export</div>
+      <div class="dropdown-item" onclick="exportExcel();closeDropdowns()">Current SLD as Excel</div>
+      <div class="dropdown-item" onclick="saveProject();closeDropdowns()">Current SLD as JSON</div>
+      <div class="dropdown-item" onclick="exportBlankTemplate();closeDropdowns()">Blank Template (.xlsx)</div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-section-header">Sync</div>
+      <div class="dropdown-item" onclick="syncToLocalFile();closeDropdowns()">Save to local file…</div>
+      <div class="dropdown-item" onclick="syncFromLocalFile();closeDropdowns()">Load from local file…</div>
+      <div class="dropdown-item" onclick="syncToTestEnv();closeDropdowns()" title="Saves with the fixed filename test_sync.json for the dev-loop workflow">Save to test environment</div>
+      <div class="dropdown-item" onclick="syncFromTestEnv();closeDropdowns()" title="Open a file picker; pick test_sync.json from the project folder">Load from test environment</div>
+      <div class="dropdown-divider"></div>
+      <div class="dropdown-section-header">Output</div>
+      <div class="dropdown-item" onclick="printAll();closeDropdowns()">Print All Pages</div>
+    </div>
+  </div>
   <span class="logo">SLD Builder</span>
   <div class="sep"></div>
-  <button class="tbtn primary" onclick="openNewSLD()">New SLD</button>
-  <button class="tbtn" onclick="openNewPage()">Add Page</button>
-  <button class="tbtn" onclick="openAddCircuit()">Add Circuit</button>
-  <button class="tbtn" onclick="openAddSubBoard()">Add Sub-Board</button>
-  <div class="sep"></div>
   <div class="dropdown">
-    <button class="tbtn" onclick="toggleDropdown('dd-import', event)">Import ▾</button>
-    <div class="dropdown-menu" id="dd-import">
-      <div class="dropdown-item" onclick="importExcelClick();closeDropdowns()">Excel (.xlsx)</div>
-      <div class="dropdown-item" onclick="loadProjectClick();closeDropdowns()">JSON (.json)</div>
+    <button class="tbtn primary" onclick="toggleDropdown('dd-add', event)">+ Add ▾</button>
+    <div class="dropdown-menu" id="dd-add">
+      <div class="dropdown-item" onclick="openAddCircuit();closeDropdowns()">Circuit</div>
+      <div class="dropdown-item" onclick="openAddSubBoard();closeDropdowns()">Sub-Board</div>
+      <div class="dropdown-item" onclick="openAddPreMeterTap();closeDropdowns()">Pre-Meter Tap</div>
     </div>
   </div>
-  <div class="dropdown">
-    <button class="tbtn" onclick="toggleDropdown('dd-export', event)">Export ▾</button>
-    <div class="dropdown-menu" id="dd-export">
-      <div class="dropdown-item" onclick="exportExcel();closeDropdowns()">Excel (.xlsx)</div>
-      <div class="dropdown-item" onclick="saveProject();closeDropdowns()">JSON (.json)</div>
-    </div>
-  </div>
-  <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
-  <input type="file" id="jsonFile" accept=".json" style="display:none" onchange="loadProject(event)">
   <div class="sep"></div>
   <button class="tbtn" onclick="printCurrent()">Print Page</button>
-  <button class="tbtn" onclick="printAll()">Print All</button>
-  <div class="sep"></div>
-  <button class="tbtn" onclick="exportBlankTemplate()" title="Download a blank Excel template with all headers">Blank Template</button>
+  <button class="tbtn" onclick="openSettings()" title="Settings" style="margin-left:auto">⚙ Settings</button>
+  <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
+  <input type="file" id="jsonFile" accept=".json" style="display:none" onchange="loadProject(event)">
+</div>
+
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal">
+    <h2>Settings</h2>
+    <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border-soft)">
+      <div class="settings-tab active" data-tab="logo" onclick="switchSettingsTab('logo')">Logo &amp; Branding</div>
+      <div class="settings-tab" data-tab="about" onclick="switchSettingsTab('about')">About</div>
+    </div>
+    <div class="settings-pane" id="settings-pane-logo">
+      <div class="form-group full">
+        <label>Upload logo file (PNG, JPG, or SVG)</label>
+        <input type="file" id="logo-upload" accept="image/*,.svg" onchange="handleLogoUpload(event)">
+        <small style="color:var(--text-muted);font-size:11px">Stored locally in your browser and travels with JSON exports.</small>
+      </div>
+      <div class="form-group full">
+        <label>Or paste image URL</label>
+        <input type="text" id="logo-url" placeholder="https://example.com/logo.png" oninput="handleLogoUrl(this.value)">
+      </div>
+      <div class="form-group full">
+        <label>Or paste SVG markup</label>
+        <textarea id="logo-svg" rows="3" placeholder="&lt;svg ...&gt;...&lt;/svg&gt;" oninput="handleLogoSvg(this.value)"></textarea>
+      </div>
+      <div class="form-group full">
+        <label>Position on schematic</label>
+        <div class="logo-pos-grid">
+          <label><input type="radio" name="logo-pos" value="header-left" onchange="handleLogoPosition('header','left')"> Header &mdash; left</label>
+          <label><input type="radio" name="logo-pos" value="header-right" checked onchange="handleLogoPosition('header','right')"> Header &mdash; right</label>
+          <label><input type="radio" name="logo-pos" value="footer-left" onchange="handleLogoPosition('footer','left')"> Footer &mdash; left</label>
+          <label><input type="radio" name="logo-pos" value="footer-right" onchange="handleLogoPosition('footer','right')"> Footer &mdash; right</label>
+        </div>
+      </div>
+      <div class="form-group full">
+        <label>Preview</label>
+        <div id="logo-preview" style="border:1px dashed var(--border);min-height:60px;padding:10px;display:flex;align-items:center;justify-content:center;background:#fafafa;border-radius:4px">
+          <span style="color:var(--text-muted);font-size:12px;font-style:italic">No logo set &mdash; RMS branding will be used.</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="tbtn danger" style="background:#fff;border:1px solid var(--border);color:#b91c1c" onclick="resetLogo()">Reset to RMS default</button>
+      </div>
+    </div>
+    <div class="settings-pane" id="settings-pane-about" style="display:none">
+      <p style="margin-bottom:8px"><strong>SLD Builder</strong></p>
+      <p style="margin-bottom:8px;color:var(--text-muted);font-size:12px">Single Line Diagram builder for Remote Metering Solutions.</p>
+      <p style="color:var(--text-muted);font-size:12px">Output styled per AS 1102.101 / IEC 60617 &mdash; Australian metering schematic.</p>
+    </div>
+    <div style="text-align:right;margin-top:18px;padding-top:14px;border-top:1px solid var(--border-soft)">
+      <button class="tbtn" style="background:#fff;border:1px solid var(--border);color:var(--text)" onclick="closeModal('modal-settings')">Close</button>
+    </div>
+  </div>
 </div>
 <div id="autosave-toast">Saved</div>
 <div id="main">
@@ -367,6 +450,42 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
   </div>
 </div>
 
+<!-- Pre-Meter Tap -->
+<div class="modal-overlay" id="modal-tap">
+  <div class="modal">
+    <h2 id="modal-tap-title">Add Pre-Meter Tap</h2>
+    <div class="form-grid">
+      <div class="form-group full"><label>Tap Name</label><input id="tap-name" placeholder="e.g. Woolies + Safety"></div>
+      <div class="form-group"><label>Amps</label><input id="tap-amps" placeholder="e.g. 750"></div>
+      <div class="form-group"><label>Phases</label>
+        <select id="tap-phases"><option value="3">3-Phase</option><option value="1">1-Phase</option><option value="2">2-Phase</option></select>
+      </div>
+      <div class="form-group"><label>Side</label>
+        <select id="tap-side"><option value="left">Left</option><option value="right">Right</option></select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="tap-status">
+          <option value="Active">Active</option><option value="OFF">OFF</option><option value="VACANT">VACANT</option>
+          <option value="DISCONNECTED">DISCONNECTED</option><option value="NO LOAD">NO LOAD</option>
+          <option value="SPARE">SPARE</option><option value="TO VERIFY">TO VERIFY</option>
+        </select>
+      </div>
+      <div class="form-group"><label>CT Ratio (optional)</label><input id="tap-ct" placeholder="e.g. 1000/5"></div>
+      <div class="form-group"><label>Meter Serial (optional)</label><input id="tap-meter" placeholder="e.g. 21987 6026"></div>
+      <div class="form-group"><label>NMI (optional)</label><input id="tap-nmi" placeholder="e.g. 6203940..."></div>
+      <div class="form-group"><label>Rx (optional)</label><input id="tap-rx" placeholder="e.g. 300"></div>
+      <div class="form-group"><label>kWh (optional initial reading)</label><input id="tap-kwh" placeholder=""></div>
+      <div class="form-group full"><label>Shops / Tenancies Fed</label><input id="tap-shops" placeholder="e.g. Woolies, Safety"></div>
+      <div class="form-group full"><label>Notes</label><textarea id="tap-notes" rows="2" placeholder="Free text"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-delete" id="btn-delete-tap" onclick="deleteCurrentTap()" style="display:none">Delete Tap</button>
+      <button class="btn-cancel" onclick="closeModal('modal-tap')">Cancel</button>
+      <button class="btn-save" onclick="savePreMeterTap()">Save</button>
+    </div>
+  </div>
+</div>
+
 <div class="ctx-menu" id="ctx-menu">
   <div class="ctx-item" id="ctx-edit">Edit</div>
   <div class="ctx-item" id="ctx-addcircuit">Add Circuit</div>
@@ -517,6 +636,72 @@ function vText(x, y, str, opts){
   return `<text x="${x}" y="${y}" font-size="${fs}"${fw}${fi} fill="${fill}" text-anchor="${anchor}" transform="rotate(-90 ${x} ${y})">${esc(str)}</text>`;
 }
 
+function _drawPreMeterTap(tap, incX, tapY){
+  const isLeft = tap.side === 'left';
+  const STUB_LEN = 110;
+  const stubEnd = incX + (isLeft ? -STUB_LEN : STUB_LEN);
+  const sc = SC[tap.status] || SC['Active'];
+  const ph = parseInt(tap.phases) || 3;
+  let out = '';
+  // Horizontal stub line from incomer wire
+  out += '<line x1="'+incX+'" y1="'+tapY+'" x2="'+stubEnd+'" y2="'+tapY+'" stroke="#232C63" stroke-width="2"/>';
+  // Phase ticks on stub
+  const tickCx = incX + (isLeft ? -15 : 15);
+  for(let t=0;t<ph;t++){
+    const tx = tickCx + (isLeft ? -t*5 : t*5);
+    out += '<line x1="'+(tx-3)+'" y1="'+(tapY-5)+'" x2="'+(tx+4)+'" y2="'+(tapY+5)+'" stroke="#000" stroke-width="1.5"/>';
+  }
+  // Amps label
+  const ampsX = incX + (isLeft ? -36 : 36);
+  if(tap.amps){
+    out += '<text x="'+ampsX+'" y="'+(tapY-6)+'" text-anchor="middle" font-size="9" font-weight="bold" fill="#000">'+esc(tap.amps)+' A</text>';
+  }
+  // CB box
+  const cbX = incX + (isLeft ? -58 : 58);
+  out += '<rect x="'+(cbX-10)+'" y="'+(tapY-7)+'" width="20" height="14" fill="'+(sc.fill||'#fff')+'" stroke="'+(sc.stroke||'#232C63')+'" stroke-width="1.2"/>';
+  out += '<line x1="'+(cbX-8)+'" y1="'+(tapY-5)+'" x2="'+(cbX+8)+'" y2="'+(tapY+5)+'" stroke="'+(sc.stroke||'#232C63')+'" stroke-width="1"/>';
+  out += '<line x1="'+(cbX+8)+'" y1="'+(tapY-5)+'" x2="'+(cbX-8)+'" y2="'+(tapY+5)+'" stroke="'+(sc.stroke||'#232C63')+'" stroke-width="1"/>';
+  // Optional CT
+  if(tap.ct){
+    const ctX = incX + (isLeft ? -80 : 80);
+    out += '<circle cx="'+ctX+'" cy="'+tapY+'" r="9" fill="#fff" stroke="#000" stroke-width="1.2"/>';
+    out += '<circle cx="'+ctX+'" cy="'+tapY+'" r="4" fill="none" stroke="#000" stroke-width="0.8"/>';
+    out += '<text x="'+ctX+'" y="'+(tapY+3)+'" text-anchor="middle" font-size="6" font-weight="bold" fill="#000">CT</text>';
+    out += '<text x="'+ctX+'" y="'+(tapY-12)+'" text-anchor="middle" font-size="8" font-weight="bold" fill="#000">'+esc(tap.ct)+'</text>';
+  }
+  // Optional meter
+  if(tap.meter || tap.nmi){
+    const mX = incX + (isLeft ? -100 : 100);
+    out += '<circle cx="'+mX+'" cy="'+tapY+'" r="9" fill="#fff" stroke="#000" stroke-width="1.5"/>';
+    out += '<text x="'+mX+'" y="'+(tapY+3)+'" text-anchor="middle" font-size="8" font-weight="bold" fill="#000">M</text>';
+    const labels = [];
+    if(tap.meter) labels.push('#'+String(tap.meter).replace(/^#/,''));
+    if(tap.nmi) labels.push('NMI '+String(tap.nmi).replace(/^#?NMI/i,''));
+    if(tap.rx) labels.push('Rx='+tap.rx);
+    if(labels.length){
+      out += '<text x="'+mX+'" y="'+(tapY+22)+'" text-anchor="middle" font-size="7" fill="#000">'+esc(labels.join(' '))+'</text>';
+    }
+  }
+  // Load-name label (far end of stub) — clickable to edit
+  if(tap.name || tap.shops){
+    const lblX = stubEnd + (isLeft ? -8 : 8);
+    const lblAnchor = isLeft ? 'end' : 'start';
+    const nm = tap.name || '';
+    const sh = tap.shops || '';
+    out += '<text x="'+lblX+'" y="'+(tapY-2)+'" text-anchor="'+lblAnchor+'" font-size="10" font-weight="bold" fill="#000" style="cursor:pointer" onclick="editPreMeterTap(\''+tap.id+'\')">'+esc(nm)+'</text>';
+    if(sh){
+      out += '<text x="'+lblX+'" y="'+(tapY+10)+'" text-anchor="'+lblAnchor+'" font-size="8" fill="#555">'+esc(sh)+'</text>';
+    }
+  }
+  // Status badge if not Active
+  if(tap.status && tap.status !== 'Active'){
+    const bgX = incX + (isLeft ? -78 : 78);
+    out += '<rect x="'+(bgX-18)+'" y="'+(tapY+9)+'" width="36" height="11" fill="'+(sc.badge||'#9ca3af')+'" rx="2"/>';
+    out += '<text x="'+bgX+'" y="'+(tapY+17)+'" text-anchor="middle" font-size="7" font-weight="bold" fill="#fff">'+esc(tap.status)+'</text>';
+  }
+  return out;
+}
+
 function buildSchematicSVG(page, sld){
   const allCircuits  = (page.circuits  || []).map(c=>({type:'circuit',data:c}));
   const allSubBoards = (page.subBoards || []).map(sb=>({type:'sub',data:sb}));
@@ -526,8 +711,10 @@ function buildSchematicSVG(page, sld){
   const hasPageNotes = !!page.notes;
   const NOTE_H = hasPageNotes ? NOTE_BAND_H : 0;
 
-  // Bus Y position
-  const busY = TIT_H + NOTE_H + (hasIncomer ? INC_DROP_H : 30);
+  // Bus Y position — reserve extra vertical space ABOVE the bus for pre-meter taps
+  const _taps = page.preMeterTaps || [];
+  const tapTotalH = _taps.length * 56;
+  const busY = TIT_H + NOTE_H + (hasIncomer ? INC_DROP_H + tapTotalH : 30);
 
   // Column geometry
   const numCols = Math.max(rows.length, 1);
@@ -579,14 +766,25 @@ function buildSchematicSVG(page, sld){
     s += `<text x="${svgW/2}" y="36" text-anchor="middle" font-size="10" fill="#c8d0e7">${esc(tp.join('  |  '))}</text>`;
   }
 
-  // ── COMPANY LOGO (top-right of title bar) ──
+  // ── COMPANY LOGO — configurable position; default = RMS branding top-right ──
   {
-    const boltX = svgW - 14;  // left edge of lightning bolt
-    const boltY = 14;         // top edge, vertically centred in 48px bar
-    // Lightning bolt polygon (10×20 px, pink #CC3366)
-    s += `<polygon points="${boltX+4},${boltY} ${boltX+10},${boltY} ${boltX+6},${boltY+9} ${boltX+10},${boltY+9} ${boltX},${boltY+20} ${boltX+4},${boltY+11} ${boltX},${boltY+11}" fill="#CC3366"/>`;
-    // Wordmark right-aligned, finishing 4px to the left of the bolt
-    s += `<text x="${boltX-4}" y="${TIT_H/2+4}" text-anchor="end" font-family="Montserrat,Arial,sans-serif" font-size="9" font-weight="700" fill="#ffffff" letter-spacing="0.4">Remote Metering Solutions</text>`;
+    const logoCfg = project.settings && project.settings.logo;
+    const usingCustom = logoCfg && logoCfg.data;
+    const pos = (logoCfg && logoCfg.position) || {v:'header', h:'right'};
+    if(usingCustom && pos.v === 'header'){
+      // Custom logo in header
+      const lw = 120, lh = 32;
+      const lx = pos.h === 'left' ? 8 : svgW - lw - 8;
+      const ly = (TIT_H - lh) / 2;
+      s += _renderLogoOnSchematic(logoCfg, lx, ly, lw, lh);
+    } else if(!usingCustom){
+      // Default RMS branding (lightning bolt + wordmark, top-right of title bar)
+      const boltX = svgW - 14;
+      const boltY = 14;
+      s += `<polygon points="${boltX+4},${boltY} ${boltX+10},${boltY} ${boltX+6},${boltY+9} ${boltX+10},${boltY+9} ${boltX},${boltY+20} ${boltX+4},${boltY+11} ${boltX},${boltY+11}" fill="#CC3366"/>`;
+      s += `<text x="${boltX-4}" y="${TIT_H/2+4}" text-anchor="end" font-family="Montserrat,Arial,sans-serif" font-size="9" font-weight="700" fill="#ffffff" letter-spacing="0.4">Remote Metering Solutions</text>`;
+    }
+    // If usingCustom && pos.v === 'footer', logo is drawn later (after footer rect) so it appears on top
   }
 
   // ── PAGE NOTES BANNER ──
@@ -607,13 +805,24 @@ function buildSchematicSVG(page, sld){
     // Vertical incomer wire (top → bus)
     s += `<line x1="${incX}" y1="${incTop+8}" x2="${incX}" y2="${busY}" stroke="#232C63" stroke-width="2"/>`;
 
+    // Pre-meter taps — render horizontal stubs ABOVE the main CT
+    _taps.forEach((tap, i) => {
+      const tapY = incTop + 24 + i*56;
+      s += _drawPreMeterTap(tap, incX, tapY);
+    });
+
     // Amps label (right of arrow)
     if(page.amps){
-      s += `<text x="${incX+8}" y="${incTop+18}" font-size="10" font-weight="bold" fill="#000">${esc(page.amps)} A</text>`;
+      s += `<text x="${incX+8}" y="${incTop+18+tapTotalH}" font-size="10" font-weight="bold" fill="#000">${esc(page.amps)} A</text>`;
     }
 
-    // CT (slot reserved at incTop+40) — monochrome
-    let cy = incTop + 40;
+    // Caption near main meter — only when there are pre-meter taps
+    if(tapTotalH){
+      s += `<text x="${incX+8}" y="${incTop+8+tapTotalH+30}" font-size="8" font-style="italic" fill="#666">Main meter excludes pre-meter taps</text>`;
+    }
+
+    // CT (slot reserved AFTER any pre-meter taps) — monochrome
+    let cy = incTop + 40 + tapTotalH;
     if(page.ct){
       s += `<circle cx="${incX}" cy="${cy}" r="${CT_R}" fill="#fff" stroke="#000" stroke-width="1.2"/>`;
       s += `<circle cx="${incX}" cy="${cy}" r="${CT_R*0.48}" fill="none" stroke="#000" stroke-width="0.8"/>`;
@@ -837,6 +1046,17 @@ function buildSchematicSVG(page, sld){
   // Caption (below the field row)
   s += `<text x="${svgW/2}" y="${fbY + 47}" text-anchor="middle" font-size="8" fill="#c8d0e7">Symbols per AS 1102.101 / IEC 60617 — Australian metering schematic</text>`;
 
+  // ── FOOTER LOGO (drawn AFTER the footer rect so it appears on top) ──
+  {
+    const logoCfg = project.settings && project.settings.logo;
+    if(logoCfg && logoCfg.data && logoCfg.position && logoCfg.position.v === 'footer'){
+      const lw = 120, lh = 32;
+      const lx = logoCfg.position.h === 'left' ? 8 : svgW - lw - 8;
+      const ly = svgH - FT_H + (FT_H - lh) / 2 - 4;
+      s += _renderLogoOnSchematic(logoCfg, lx, ly, lw, lh);
+    }
+  }
+
   s += '</svg>';
   return s;
 }
@@ -917,7 +1137,7 @@ function savePage(){
     const page=sld.pages.find(p=>p.id===editingId);
     if(page) Object.assign(page,data);
   } else {
-    const page={id:uid(),...data,circuits:[],subBoards:[]};
+    const page={id:uid(),...data,circuits:[],subBoards:[],preMeterTaps:[]};
     sld.pages.push(page);
     selectedPageId=page.id;
   }
@@ -1061,6 +1281,88 @@ function deleteCurrentSub(){
   page.subBoards=page.subBoards.filter(s=>s.id!==editingId);
   closeModal('modal-sub');renderCanvas();
 }
+function openAddPreMeterTap(){
+  if(!selectedPageId){alert('Please select an MSB first.');return;}
+  editingId=null;
+  document.getElementById('modal-tap-title').textContent='Add Pre-Meter Tap';
+  document.getElementById('btn-delete-tap').style.display='none';
+  ['tap-name','tap-amps','tap-ct','tap-meter','tap-nmi','tap-rx','tap-kwh','tap-shops','tap-notes'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('tap-phases').value='3';
+  document.getElementById('tap-side').value='left';
+  document.getElementById('tap-status').value='Active';
+  openModal('modal-tap');
+  setTimeout(()=>document.getElementById('tap-name').focus(),100);
+}
+function editPreMeterTap(tapId){
+  const page=getCurrentPage();if(!page)return;
+  const taps=page.preMeterTaps||[];
+  const t=taps.find(x=>x.id===tapId);if(!t)return;
+  editingId=tapId;
+  document.getElementById('modal-tap-title').textContent='Edit Pre-Meter Tap';
+  document.getElementById('btn-delete-tap').style.display='';
+  document.getElementById('tap-name').value=t.name||'';
+  document.getElementById('tap-amps').value=t.amps||'';
+  document.getElementById('tap-phases').value=t.phases||'3';
+  document.getElementById('tap-side').value=t.side||'left';
+  document.getElementById('tap-status').value=t.status||'Active';
+  document.getElementById('tap-ct').value=t.ct||'';
+  document.getElementById('tap-meter').value=t.meter||'';
+  document.getElementById('tap-nmi').value=t.nmi||'';
+  document.getElementById('tap-rx').value=t.rx||'';
+  document.getElementById('tap-kwh').value=t.kwh||'';
+  document.getElementById('tap-shops').value=t.shops||'';
+  document.getElementById('tap-notes').value=t.notes||'';
+  openModal('modal-tap');
+}
+function savePreMeterTap(){
+  const page=getCurrentPage();if(!page){alert('Please select an MSB first.');return;}
+  const name=document.getElementById('tap-name').value.trim();
+  const amps=document.getElementById('tap-amps').value.trim();
+  if(!name){alert('Please enter a tap name.');return;}
+  if(!amps){alert('Please enter an amps value.');return;}
+  if(!Array.isArray(page.preMeterTaps)) page.preMeterTaps=[];
+  const data={
+    name,
+    amps,
+    phases:document.getElementById('tap-phases').value,
+    side:document.getElementById('tap-side').value,
+    status:document.getElementById('tap-status').value,
+    ct:document.getElementById('tap-ct').value.trim(),
+    meter:document.getElementById('tap-meter').value.trim(),
+    nmi:document.getElementById('tap-nmi').value.trim(),
+    rx:document.getElementById('tap-rx').value.trim(),
+    kwh:document.getElementById('tap-kwh').value.trim(),
+    shops:document.getElementById('tap-shops').value.trim(),
+    notes:document.getElementById('tap-notes').value.trim()
+  };
+  if(editingId){
+    const t=page.preMeterTaps.find(x=>x.id===editingId);
+    if(t) Object.assign(t,data);
+  } else {
+    page.preMeterTaps.push({id:uid(),...data});
+  }
+  closeModal('modal-tap');
+  autoSave();
+  renderSidebar();
+  renderCanvas();
+}
+function deletePreMeterTap(tapId){
+  const page=getCurrentPage();if(!page)return;
+  if(!confirm('Delete this pre-meter tap?'))return;
+  page.preMeterTaps=(page.preMeterTaps||[]).filter(t=>t.id!==tapId);
+  autoSave();
+  renderSidebar();
+  renderCanvas();
+}
+function deleteCurrentTap(){
+  if(!editingId)return;
+  const id=editingId;
+  closeModal('modal-tap');
+  deletePreMeterTap(id);
+}
+
 function getCurrentPage(){
   if(!selectedSLDId||!selectedPageId)return null;
   const sld=project.slds.find(s=>s.id===selectedSLDId);
@@ -1078,6 +1380,121 @@ function toggleDropdown(id, ev){
 }
 function closeDropdowns(){
   document.querySelectorAll('.dropdown-menu.open').forEach(m=>m.classList.remove('open'));
+}
+function openSettings(){
+  // Load current state into modal
+  const logo = project.settings && project.settings.logo || {};
+  document.getElementById('logo-url').value = logo.type==='url' ? (logo.data || '') : '';
+  document.getElementById('logo-svg').value = logo.type==='svg' ? (logo.data || '') : '';
+  document.getElementById('logo-upload').value = '';
+  const pos = logo.position || {v:'header', h:'right'};
+  const radio = document.querySelector('input[name="logo-pos"][value="'+pos.v+'-'+pos.h+'"]');
+  if(radio) radio.checked = true;
+  renderLogoPreview();
+  switchSettingsTab('logo');
+  document.getElementById('modal-settings').classList.add('open');
+}
+function switchSettingsTab(tab){
+  document.querySelectorAll('.settings-tab').forEach(el=>el.classList.toggle('active', el.dataset.tab===tab));
+  document.querySelectorAll('.settings-pane').forEach(el=>el.style.display=el.id==='settings-pane-'+tab?'block':'none');
+}
+function handleLogoUpload(ev){
+  const file = ev.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{ setLogoData('image', e.target.result); };
+  reader.readAsDataURL(file);
+}
+function handleLogoUrl(url){
+  url = (url||'').trim();
+  if(url) setLogoData('url', url);
+}
+function handleLogoSvg(svg){
+  svg = (svg||'').trim();
+  if(svg) setLogoData('svg', svg);
+}
+function handleLogoPosition(v, h){
+  project.settings = project.settings || {};
+  project.settings.logo = project.settings.logo || {type:'',data:''};
+  project.settings.logo.position = {v:v, h:h};
+  autoSave();
+  renderCanvas();
+}
+function setLogoData(type, data){
+  project.settings = project.settings || {};
+  const existing = project.settings.logo || {};
+  project.settings.logo = {
+    type: type,
+    data: data,
+    position: existing.position || {v:'header', h:'right'}
+  };
+  autoSave();
+  renderLogoPreview();
+  renderToolbarLogo();
+  renderCanvas();
+}
+function renderLogoPreview(){
+  const preview = document.getElementById('logo-preview');
+  const logo = project.settings && project.settings.logo;
+  if(!logo || !logo.data){
+    preview.innerHTML = '<span style="color:var(--text-muted);font-size:12px;font-style:italic">No logo set — RMS branding will be used.</span>';
+    return;
+  }
+  if(logo.type === 'svg'){
+    preview.innerHTML = '<div style="max-height:60px;max-width:240px;overflow:hidden">'+logo.data+'</div>';
+  } else {
+    preview.innerHTML = '<img src="'+logo.data.replace(/"/g,'&quot;')+'" style="max-height:60px;max-width:240px">';
+  }
+}
+function resetLogo(){
+  if(!confirm('Reset logo to RMS default?')) return;
+  if(project.settings) delete project.settings.logo;
+  document.getElementById('logo-url').value = '';
+  document.getElementById('logo-svg').value = '';
+  document.getElementById('logo-upload').value = '';
+  document.querySelector('input[name="logo-pos"][value="header-right"]').checked = true;
+  renderLogoPreview();
+  renderToolbarLogo();
+  autoSave();
+  renderCanvas();
+}
+// Update the toolbar logo to reflect the current project.settings.logo (or fall back to RMS default)
+function renderToolbarLogo(){
+  const logoSpan = document.querySelector('#toolbar .logo');
+  if(!logoSpan) return;
+  const logo = project.settings && project.settings.logo;
+  if(logo && logo.data){
+    if(logo.type === 'svg'){
+      logoSpan.innerHTML = logo.data;
+    } else {
+      const href = String(logo.data).replace(/"/g,'&quot;');
+      logoSpan.innerHTML = '<img src="'+href+'" alt="logo">';
+    }
+    logoSpan.classList.add('logo-custom');
+  } else {
+    logoSpan.innerHTML = 'SLD Builder';
+    logoSpan.classList.remove('logo-custom');
+  }
+}
+
+// Helper used by buildSchematicSVG to embed configured logo as SVG markup.
+// Adds a soft white rounded background behind the logo so dark logos are legible
+// against the schematic's RMS-navy header and footer bars.
+function _renderLogoOnSchematic(logoCfg, x, y, w, h){
+  if(!logoCfg || !logoCfg.data) return '';
+  // White chip behind logo (4px padding all sides, 4px corner radius)
+  const pad = 4;
+  const bgX = x - pad, bgY = y - pad, bgW = w + pad*2, bgH = h + pad*2;
+  let out = '<rect x="'+bgX+'" y="'+bgY+'" width="'+bgW+'" height="'+bgH+'" rx="4" ry="4" fill="#ffffff"/>';
+  if(logoCfg.type === 'svg'){
+    const inner = String(logoCfg.data).replace(/<\?xml[^?]*\?>/, '').replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '');
+    out += '<g transform="translate('+x+','+y+')">'+inner+'</g>';
+  } else {
+    // image or url
+    const href = String(logoCfg.data).replace(/"/g,'&quot;').replace(/&(?!(amp|lt|gt|quot|apos);)/g, '&amp;');
+    out += '<image x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" href="'+href+'" preserveAspectRatio="xMidYMid meet"/>';
+  }
+  return out;
 }
 document.addEventListener('click',closeDropdowns);
 
@@ -1210,7 +1627,7 @@ function importExcel(e){
       const pagesRows=pagesSheet?XLSX.utils.sheet_to_json(pagesSheet):[];
       const pageMap={};
       const pages=pagesRows.map(r=>{
-        const pg={id:uid(),name:r.PageName||'MSB',desc:r.Description||'',amps:String(r.Amps||''),phases:String(r.Phases||'3'),ct:r.CTRatio||'',meter:r.IncomerMeter||'',nmi:r.IncomerNMI||'',rx:String(r.IncomerRx||''),bustype:r.BusType||'solid',boundary:r.Boundary||'',notes:r.Notes||'',circuits:[],subBoards:[]};
+        const pg={id:uid(),name:r.PageName||'MSB',desc:r.Description||'',amps:String(r.Amps||''),phases:String(r.Phases||'3'),ct:r.CTRatio||'',meter:r.IncomerMeter||'',nmi:r.IncomerNMI||'',rx:String(r.IncomerRx||''),bustype:r.BusType||'solid',boundary:r.Boundary||'',notes:r.Notes||'',circuits:[],subBoards:[],preMeterTaps:[]};
         pageMap[r.PageNumber]=pg.id;return pg;
       });
       const circRows=wb.Sheets['Circuits']?XLSX.utils.sheet_to_json(wb.Sheets['Circuits']):[];
@@ -1262,10 +1679,53 @@ function importExcel(e){
   };
   reader.readAsBinaryString(file);e.target.value='';
 }
+// ─── SYNC HELPERS (wraps export with fixed/variable filenames) ───────────────
+// Real two-way File System Access API sync is deferred until the app is hosted
+// over http:// (file:// blocks the API). See docs/notes.md.
+function _exportCurrentSldAsJson(filename){
+  if(!selectedSLDId){alert('Please select an SLD to export.');return;}
+  const sld=project.slds.find(s=>s.id===selectedSLDId);if(!sld)return;
+  const exported={
+    name: sld.name || 'New Project',
+    slds: [sld],
+    report: project.report || {},
+    settings: project.settings || {}
+  };
+  const json=JSON.stringify(exported,null,2);
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(json);
+  a.download=filename;
+  a.click();
+}
+function syncToLocalFile(){
+  if(!selectedSLDId){alert('Please select an SLD to export.');return;}
+  const sld=project.slds.find(s=>s.id===selectedSLDId);if(!sld)return;
+  _exportCurrentSldAsJson((sld.name||'sld_project').replace(/[^a-z0-9]/gi,'_')+'.json');
+}
+function syncFromLocalFile(){
+  loadProjectClick();
+}
+function syncToTestEnv(){
+  _exportCurrentSldAsJson('test_sync.json');
+}
+function syncFromTestEnv(){
+  alert('Pick test_sync.json from your project folder.');
+  loadProjectClick();
+}
 function saveProject(){
-  const json=JSON.stringify(project,null,2);
+  if(!selectedSLDId){alert('Please select an SLD to export.');return;}
+  const sld=project.slds.find(s=>s.id===selectedSLDId);if(!sld)return;
+  // Per-SLD export — mirrors exportExcel() behaviour.
+  // Includes the project-level report block and settings (logo etc.) so they travel with the SLD.
+  const exported={
+    name: sld.name || 'New Project',
+    slds: [sld],
+    report: project.report || {},
+    settings: project.settings || {}
+  };
+  const json=JSON.stringify(exported,null,2);
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(json);
-  a.download=(project.name||'sld_project').replace(/[^a-z0-9]/gi,'_')+'.json';a.click();
+  a.download=(sld.name||'sld_project').replace(/[^a-z0-9]/gi,'_')+'.json';a.click();
 }
 function loadProjectClick(){document.getElementById('jsonFile').click();}
 function loadProject(e){
@@ -1273,9 +1733,11 @@ function loadProject(e){
   const reader=new FileReader();
   reader.onload=evt=>{
     try{
-      project=JSON.parse(evt.target.result);
-      // backwards-compat sweep
-      (project.slds||[]).forEach(s=>(s.pages||[]).forEach(p=>{
+      const loaded=JSON.parse(evt.target.result);
+      const incomingSLDs=loaded.slds||[];
+      // backwards-compat sweep on the incoming data
+      incomingSLDs.forEach(s=>(s.pages||[]).forEach(p=>{
+        if(!Array.isArray(p.preMeterTaps)) p.preMeterTaps = [];
         (p.circuits||[]).forEach(c=>{
           if(c.mtype==='3ph'||c.mtype==='1ph'||c.mtype==='2ph') c.mtype='metered';
           if(c.section) c.section = String(c.section).toUpperCase().trim();
@@ -1284,9 +1746,29 @@ function loadProject(e){
           if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
         });
       }));
-      selectedSLDId=project.slds[0]?.id||null;
-      selectedPageId=project.slds[0]?.pages[0]?.id||null;
+      // Merge: update existing SLDs by id, append new ones. Mirrors importExcel().
+      let added=0, updated=0;
+      incomingSLDs.forEach(incoming=>{
+        const idx=project.slds.findIndex(s=>s.id===incoming.id);
+        if(idx>=0){project.slds[idx]=incoming;updated++;}
+        else{project.slds.push(incoming);added++;}
+      });
+      // Carry across report data only if current project has none
+      if(loaded.report && (!project.report || !Object.keys(project.report).length)){
+        project.report=loaded.report;
+      }
+      // Merge settings (logo etc.) — incoming wins for keys that are set
+      if(loaded.settings && Object.keys(loaded.settings).length){
+        project.settings = Object.assign({}, project.settings || {}, loaded.settings);
+        renderToolbarLogo();
+      }
+      // Select the first imported SLD so the user sees what just loaded
+      if(incomingSLDs[0]){
+        selectedSLDId=incomingSLDs[0].id;
+        selectedPageId=incomingSLDs[0].pages?.[0]?.id||null;
+      }
       renderSidebar();renderCanvas();
+      alert(`Loaded ${file.name}\nAdded: ${added}, Updated: ${updated}`);
     }catch(err){alert('Load error: '+err.message);}
   };
   reader.readAsText(file);e.target.value='';
@@ -1353,7 +1835,13 @@ function tryAutoLoad(){
     const raw = localStorage.getItem('rms_sld_autosave');
     if(!raw) return false;
     const p = JSON.parse(raw);
-    if(p && Array.isArray(p.slds) && p.slds.length){ project = p; return true; }
+    if(p && Array.isArray(p.slds) && p.slds.length){
+      // backwards-compat: ensure each page has a preMeterTaps array
+      p.slds.forEach(s=>(s.pages||[]).forEach(pg=>{
+        if(!Array.isArray(pg.preMeterTaps)) pg.preMeterTaps = [];
+      }));
+      project = p; return true;
+    }
   }catch(e){}
   return false;
 }
@@ -1677,7 +2165,7 @@ tbody tr:nth-child(even) td{background:#f9fafb}
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-tryAutoLoad(); renderSidebar();renderCanvas();
+tryAutoLoad(); renderSidebar(); renderCanvas(); renderToolbarLogo();
 </script>
 </body>
 </html>
