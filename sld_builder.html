@@ -43,6 +43,11 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
 .tbtn.success{color:#bbf7d0}
 .tbtn.success:hover{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.3);color:#fff}
 #toolbar .sep{width:1px;height:20px;background:rgba(255,255,255,.15);margin:0 4px}
+.dropdown{position:relative;display:inline-block}
+.dropdown-menu{display:none;position:absolute;top:100%;left:0;background:#232C63;border:1px solid rgba(255,255,255,.20);border-radius:4px;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:1000;margin-top:2px;overflow:hidden}
+.dropdown-menu.open{display:block}
+.dropdown-item{padding:8px 14px;color:#cdd3f0;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;line-height:1.4}
+.dropdown-item:hover{background:rgba(255,255,255,.10);color:#fff}
 
 #main{display:flex;flex:1;overflow:hidden;background:var(--bg-alt)}
 
@@ -174,12 +179,21 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
   <button class="tbtn" onclick="openAddCircuit()">Add Circuit</button>
   <button class="tbtn" onclick="openAddSubBoard()">Add Sub-Board</button>
   <div class="sep"></div>
-  <button class="tbtn" onclick="exportExcel()">Export Excel</button>
-  <button class="tbtn" onclick="importExcelClick()">Import Excel</button>
+  <div class="dropdown">
+    <button class="tbtn" onclick="toggleDropdown('dd-import', event)">Import ▾</button>
+    <div class="dropdown-menu" id="dd-import">
+      <div class="dropdown-item" onclick="importExcelClick();closeDropdowns()">Excel (.xlsx)</div>
+      <div class="dropdown-item" onclick="loadProjectClick();closeDropdowns()">JSON (.json)</div>
+    </div>
+  </div>
+  <div class="dropdown">
+    <button class="tbtn" onclick="toggleDropdown('dd-export', event)">Export ▾</button>
+    <div class="dropdown-menu" id="dd-export">
+      <div class="dropdown-item" onclick="exportExcel();closeDropdowns()">Excel (.xlsx)</div>
+      <div class="dropdown-item" onclick="saveProject();closeDropdowns()">JSON (.json)</div>
+    </div>
+  </div>
   <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)">
-  <div class="sep"></div>
-  <button class="tbtn" onclick="saveProject()">Save Project</button>
-  <button class="tbtn" onclick="loadProjectClick()">Open Project</button>
   <input type="file" id="jsonFile" accept=".json" style="display:none" onchange="loadProject(event)">
   <div class="sep"></div>
   <button class="tbtn" onclick="printCurrent()">Print Page</button>
@@ -1052,6 +1066,21 @@ function getCurrentPage(){
   const sld=project.slds.find(s=>s.id===selectedSLDId);
   return sld?sld.pages.find(p=>p.id===selectedPageId):null;
 }
+
+// ─── TOOLBAR DROPDOWNS (Import / Export) ────────────────────────────────
+function toggleDropdown(id, ev){
+  if(ev) ev.stopPropagation();
+  const menu=document.getElementById(id);
+  if(!menu) return;
+  const wasOpen=menu.classList.contains('open');
+  closeDropdowns();
+  if(!wasOpen) menu.classList.add('open');
+}
+function closeDropdowns(){
+  document.querySelectorAll('.dropdown-menu.open').forEach(m=>m.classList.remove('open'));
+}
+document.addEventListener('click',closeDropdowns);
+
 
 // ─── CONTEXT MENU ─────────────────────────────────────────────────────────────
 let ctxType=null,ctxItemId=null,ctxSldId=null;
