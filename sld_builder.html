@@ -799,7 +799,6 @@ function buildSchematicSVG(page, sld){
   // Group adjacent rows that share the same `section` value into contiguous bus segments.
   // Empty section ("") is treated as a single default segment. Pre-meter taps don't
   // participate — they sit above the bus.
-  const SECTION_GAP = 32; // px gap drawn between adjacent bus segments
   const sectionGroups = []; // {section, startIdx, endIdx}
   rows.forEach((row, i) => {
     const sec = ((row.data.section || '') + '').trim().toUpperCase();
@@ -807,12 +806,14 @@ function buildSchematicSVG(page, sld){
     if(last && last.section === sec){ last.endIdx = i; }
     else { sectionGroups.push({section: sec, startIdx: i, endIdx: i}); }
   });
-  const hasBusSplits  = sectionGroups.length > 1;
-  const totalGapWidth = hasBusSplits ? (sectionGroups.length - 1) * SECTION_GAP : 0;
-  // Per-column x-offset = (segment index) * SECTION_GAP
-  const colOffsets = new Array(rows.length).fill(0);
-  sectionGroups.forEach((g, gi) => {
-    for(let i = g.startIdx; i <= g.endIdx; i++) colOffsets[i] = gi * SECTION_GAP;
+  // Sub-bus branch topology: main bus stays continuous; each non-empty section
+  // gets a sub-bus drawn below the main bus, and sectioned columns drop from it.
+  const SUB_BUS_OFFSET = 40;
+  const colBusYOffset = new Array(rows.length).fill(0);
+  sectionGroups.forEach(g => {
+    if(g.section){
+      for(let i = g.startIdx; i <= g.endIdx; i++) colBusYOffset[i] = SUB_BUS_OFFSET;
+    }
   });
 
   const hasIncomer   = !!(page.amps || page.ct || page.meter);
@@ -834,12 +835,12 @@ function buildSchematicSVG(page, sld){
   // COL_W is the preferred maximum; for pages with many circuits it shrinks proportionally.
   const colW = Math.min(COL_W, Math.floor((1480 - LEFT_PAD - RIGHT_PAD) / numCols));
   // Enforce a minimum SVG width so the footer title block never clips short text.
-  const svgW = Math.max(900, LEFT_PAD + numCols * colW + totalGapWidth + RIGHT_PAD);
-  const colCx = (i)=> LEFT_PAD + i*colW + colW/2 + (colOffsets[i] || 0);
+  const svgW = Math.max(900, LEFT_PAD + numCols * colW + RIGHT_PAD);
+  const colCx = (i)=> LEFT_PAD + i*colW + colW/2;
 
-  // Bus extents — anchored on colCx so any per-segment offsets are included.
-  const busLeft  = colCx(0) - colW/2 + 8;
-  const busRight = colCx(numCols-1) + colW/2 - 8;
+  // Bus extents — continuous main bus spans all columns.
+  const busLeft  = LEFT_PAD + 8;
+  const busRight = LEFT_PAD + numCols * colW - 8;
 
   // Find incomer drop column — boundary between OUTSIDE EN and INSIDE EN circuits.
   // Default: middle of the bus.
@@ -853,10 +854,11 @@ function buildSchematicSVG(page, sld){
     incX = LEFT_PAD + colW/2;
   }
 
-  // Row content heights (consistent grid for all columns)
-  const rowSpineBot = busY + ROW_BOX_TOP - 6;             // wire from bus down to box top
-  const boxBot      = busY + ROW_BOX_TOP + ROW_BOX_H;
-  const svgH        = boxBot + 30 + FT_H;
+  // Row content heights — sectioned cols drop deeper because their spine starts at sub-bus.
+  const maxBoxBot = rows.length
+    ? Math.max(...rows.map((_, i) => busY + colBusYOffset[i] + ROW_BOX_TOP + ROW_BOX_H))
+    : (busY + ROW_BOX_TOP + ROW_BOX_H);
+  const svgH = maxBoxBot + 30 + FT_H;
 
   let s = `<svg class="schematic-svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg" font-family="'Varela Round',Arial,sans-serif">`;
   s += `<rect x="0" y="0" width="${svgW}" height="${svgH}" fill="#fff" stroke="#b0b8d8" stroke-width="1.5"/>`;
@@ -970,21 +972,22 @@ function buildSchematicSVG(page, sld){
   }
 
   // ── HORIZONTAL BUSBAR ──
-  // Draw one line per section group. With a single group this matches the old full-width bus.
-  if(rows.length){
-    sectionGroups.forEach(g => {
-      const segL = colCx(g.startIdx) - colW/2 + 8;
-      const segR = colCx(g.endIdx)   + colW/2 - 8;
-      s += `<line x1="${segL}" y1="${busY}" x2="${segR}" y2="${busY}" stroke="#232C63" stroke-width="5"/>`;
-      // Section label above the segment (only when bus is split and section non-blank).
-      if(hasBusSplits && g.section){
-        const segMid = (segL + segR) / 2;
-        s += `<text x="${segMid}" y="${busY-22}" text-anchor="middle" font-size="10" font-weight="bold" fill="#35679E">${esc(g.section)}</text>`;
-      }
-    });
-  } else {
-    s += `<line x1="${busLeft}" y1="${busY}" x2="${busRight}" y2="${busY}" stroke="#232C63" stroke-width="5"/>`;
-  }
+  // Main bus is one continuous line. Each non-empty section group gets a sub-bus
+  // hanging below the main bus with a vertical connector wire and a label above it.
+  s += `<line x1="${busLeft}" y1="${busY}" x2="${busRight}" y2="${busY}" stroke="#232C63" stroke-width="5"/>`;
+  sectionGroups.forEach(g => {
+    if(!g.section) return; // bare (empty section) — columns drop straight from main bus
+    const subBusY = busY + SUB_BUS_OFFSET;
+    const subL    = colCx(g.startIdx) - colW/2 + 8;
+    const subR    = colCx(g.endIdx)   + colW/2 - 8;
+    const subMidX = (subL + subR) / 2;
+    // Connector wire — main bus down to centre of sub-bus
+    s += `<line x1="${subMidX}" y1="${busY}" x2="${subMidX}" y2="${subBusY}" stroke="#232C63" stroke-width="2"/>`;
+    // Sub-bus line (thinner than main bus)
+    s += `<line x1="${subL}" y1="${subBusY}" x2="${subR}" y2="${subBusY}" stroke="#232C63" stroke-width="4"/>`;
+    // Section label above the sub-bus
+    s += `<text x="${subMidX}" y="${subBusY - 8}" text-anchor="middle" font-size="11" font-weight="bold" fill="#35679E">${esc(g.section)}</text>`;
+  });
 
   // Bus labels are now data-driven via the `section` field (rendered with each bus segment).
   // No hardcoded OUTSIDE EN / INSIDE EN strings — type whatever you want in Bus Section
@@ -998,6 +1001,10 @@ function buildSchematicSVG(page, sld){
   // ── PER-COLUMN CIRCUIT DROPS ──
   rows.forEach((row,i)=>{
     const cx = colCx(i);
+    // Effective bus Y for THIS column. Sectioned cols drop from their sub-bus
+    // (busY + SUB_BUS_OFFSET); bare cols drop straight from the main bus.
+    const colBusY = busY + colBusYOffset[i];
+    const rowSpineBot = colBusY + ROW_BOX_TOP - 6;
     const isCirc = row.type==='circuit';
     const c = row.data;
     const sc = SC[c.status] || SC['Active'];
@@ -1006,19 +1013,19 @@ function buildSchematicSVG(page, sld){
     const hasMeter = isCirc ? c.mtype !== 'none' : true;  // sub-boards always show meter slot if metered
 
     // Vertical spine (from bus to top of load box)
-    s += `<line x1="${cx}" y1="${busY}" x2="${cx}" y2="${rowSpineBot}" stroke="#232C63" stroke-width="1.5"/>`;
+    s += `<line x1="${cx}" y1="${colBusY}" x2="${cx}" y2="${rowSpineBot}" stroke="#232C63" stroke-width="1.5"/>`;
 
     // Phase ticks just below bus
-    s += phaseTicksV(cx, busY + ROW_PHASE_Y, ph);
+    s += phaseTicksV(cx, colBusY + ROW_PHASE_Y, ph);
 
     // Amps label (left of CB)
     if(c.amps){
-      s += `<text x="${cx-14}" y="${busY+ROW_AMP_Y}" text-anchor="end" font-size="10" font-weight="bold" fill="#000">${esc(c.amps)} A</text>`;
+      s += `<text x="${cx-14}" y="${colBusY+ROW_AMP_Y}" text-anchor="end" font-size="10" font-weight="bold" fill="#000">${esc(c.amps)} A</text>`;
     }
 
     // CB box (centred on cx)
     const cbX = cx - 11;
-    const cbY = busY + ROW_CB_TOP;
+    const cbY = colBusY + ROW_CB_TOP;
     const _isOutsideEN = c.boundary === 'outside';
     let cbFill   = isCirc ? sc.fill   : (sc.fill==='#ffffff' ? '#c8d9ef' : sc.fill);
     let cbStroke = isCirc ? sc.stroke : (sc.stroke==='#222'  ? '#35679E' : sc.stroke);
@@ -1039,7 +1046,7 @@ function buildSchematicSVG(page, sld){
 
     // CT (reserved slot — drawn only if present)
     if(hasCT){
-      const cty = busY + ROW_CT_CY;
+      const cty = colBusY + ROW_CT_CY;
       s += `<circle cx="${cx}" cy="${cty}" r="${CT_R}" fill="#fff" stroke="#000" stroke-width="1.2"/>`;
       s += `<circle cx="${cx}" cy="${cty}" r="${CT_R*0.48}" fill="none" stroke="#000" stroke-width="0.8"/>`;
       s += `<text x="${cx}" y="${cty+3}" text-anchor="middle" font-size="7" font-weight="bold" fill="#000">CT</text>`;
@@ -1053,7 +1060,7 @@ function buildSchematicSVG(page, sld){
 
     // Meter (reserved slot — drawn only if present)
     if(hasMeter){
-      const my = busY + ROW_M_CY;
+      const my = colBusY + ROW_M_CY;
       s += `<circle cx="${cx}" cy="${my}" r="${M_R}" fill="#fff" stroke="#000" stroke-width="1.5"/>`;
       s += `<text x="${cx}" y="${my+4}" text-anchor="middle" font-size="9" font-weight="bold" fill="#000">M</text>`;
       // Vertical labels reading bottom-to-top, starting at right of meter.
@@ -1082,7 +1089,7 @@ function buildSchematicSVG(page, sld){
     //   • Boundary / Fx / Notes / kWh / Status etc. are still editable in the modal and exported to XLSX.
     const boxW = colW - 28;
     const boxX = cx - boxW/2;
-    const boxY = busY + ROW_BOX_TOP;
+    const boxY = colBusY + ROW_BOX_TOP;
     const subOffline = !isCirc && c.status && c.status!=='Active';
     const bFill   = isCirc ? sc.fill   : (subOffline ? sc.fill : '#eef0f7');   // sub-boards: RMS navy-tinted background
     const bStroke = _isOutsideEN ? '#dc2626' : '#232C63';                       // navy border (or red for Outside EN)
