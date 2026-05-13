@@ -2029,8 +2029,12 @@ async function _syncFlush(){
           return;
         }
       }
-      const writable = await _syncHandle.createWritable();
-      await writable.write(JSON.stringify(project, null, 2));
+      // keepExistingData:true means the original file content is preserved until close() commits.
+      // If the tab closes or write is interrupted, the file isn't left truncated.
+      const writable = await _syncHandle.createWritable({ keepExistingData: true });
+      const json = JSON.stringify(project, null, 2);
+      await writable.write({ type: 'write', position: 0, data: json });
+      await writable.truncate(json.length);  // chop off any leftover bytes from previous longer content
       await writable.close();
       // If new requests came in while we were writing, _syncPending will be true and we loop.
     } while(_syncPending);
@@ -2100,6 +2104,22 @@ async function _initSync(){
     console.warn('Sync init failed:', e);
   }
 }
+
+// Flush any pending debounced sync write immediately — used before tab close.
+function _syncFlushImmediate(){
+  if(_syncDebounceTimer){
+    clearTimeout(_syncDebounceTimer);
+    _syncDebounceTimer = null;
+    // Fire and forget — we have very little time before unload
+    _syncFlush().catch(e => console.warn('Sync flush on unload failed:', e));
+  }
+}
+
+// Register tab-close handlers so we don't leave a half-written file on disk
+window.addEventListener('beforeunload', _syncFlushImmediate);
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) _syncFlushImmediate();
+});
 function saveProject(){
   if(!selectedSLDId){alert('Please select an SLD to export.');return;}
   const sld=project.slds.find(s=>s.id===selectedSLDId);if(!sld)return;
