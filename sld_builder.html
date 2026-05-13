@@ -1980,22 +1980,53 @@ async function syncConnect(){
     }
   }
 }
-async function _syncWriteToFile(){
+// Sync write state — used by the debounce + serialise machinery below.
+let _syncWriting = false;
+let _syncPending = false;
+let _syncDebounceTimer = null;
+const _SYNC_DEBOUNCE_MS = 250;
+
+// Public entry — called by autoSave. Debounces rapid calls then serialises actual writes.
+function _syncWriteToFile(){
+  if(!_syncHandle) return Promise.resolve();
+  if(_syncDebounceTimer){
+    clearTimeout(_syncDebounceTimer);
+  }
+  _syncDebounceTimer = setTimeout(() => {
+    _syncDebounceTimer = null;
+    _syncFlush().catch(e => console.error('Sync flush failed:', e));
+  }, _SYNC_DEBOUNCE_MS);
+  return Promise.resolve();
+}
+
+// Actual write — serialised: if one's already running, set pending and let it loop.
+async function _syncFlush(){
   if(!_syncHandle) return;
+  if(_syncWriting){
+    _syncPending = true;
+    return;
+  }
+  _syncWriting = true;
   try {
-    let perm = await _syncHandle.queryPermission({mode: 'readwrite'});
-    if(perm !== 'granted'){
-      perm = await _syncHandle.requestPermission({mode: 'readwrite'});
+    do {
+      _syncPending = false;
+      let perm = await _syncHandle.queryPermission({mode: 'readwrite'});
       if(perm !== 'granted'){
-        console.warn('Sync write permission not granted');
-        return;
+        perm = await _syncHandle.requestPermission({mode: 'readwrite'});
+        if(perm !== 'granted'){
+          console.warn('Sync write permission not granted');
+          return;
+        }
       }
-    }
-    const writable = await _syncHandle.createWritable();
-    await writable.write(JSON.stringify(project, null, 2));
-    await writable.close();
+      const writable = await _syncHandle.createWritable();
+      await writable.write(JSON.stringify(project, null, 2));
+      await writable.close();
+      // If new requests came in while we were writing, _syncPending will be true and we loop.
+    } while(_syncPending);
   } catch(e){
     console.error('Sync write failed:', e);
+  } finally {
+    _syncWriting = false;
   }
 }
 async function syncReload(){
