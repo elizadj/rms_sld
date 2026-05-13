@@ -839,9 +839,21 @@ function buildSchematicSVG(page, sld){
   const colCx = (i)=> LEFT_PAD + i*colW + colW/2;
 
   // Bus extents — continuous main bus spans all columns.
-  // Bus endpoints align with the first and last column centres — no overshoot past the outermost circuits
-  const busLeft  = rows.length ? colCx(0) : LEFT_PAD + 8;
-  const busRight = rows.length ? colCx(numCols-1) : LEFT_PAD + numCols * colW - 8;
+  // Main bus only exists where things connect to it: bare column drops + sub-bus connectors + incomer.
+  // Compute the actual connection X positions, then span from leftmost to rightmost.
+  const _mainBusXs = [];
+  rows.forEach((row, i) => {
+    const _sec = ((row.data.section || '') + '').trim();
+    if(!_sec) _mainBusXs.push(colCx(i));  // bare column → connects directly to main bus
+  });
+  sectionGroups.forEach(g => {
+    if(g.section){
+      _mainBusXs.push((colCx(g.startIdx) + colCx(g.endIdx)) / 2);  // sub-bus connector midpoint
+    }
+  });
+  // Bus extents initially from circuit/sub-bus connections; incX is added later once it's computed
+  let busLeft  = _mainBusXs.length ? Math.min(..._mainBusXs) : LEFT_PAD + 8;
+  let busRight = _mainBusXs.length ? Math.max(..._mainBusXs) : LEFT_PAD + numCols * colW - 8;
 
   // Find incomer drop column — boundary between OUTSIDE EN and INSIDE EN circuits.
   // Default: middle of the bus.
@@ -850,10 +862,13 @@ function buildSchematicSVG(page, sld){
   if(incIdx > 0){
     incX = LEFT_PAD + incIdx * colW;          // gap between cols
   } else if(rows.length){
-    incX = (busLeft + busRight)/2;             // centre of bus
+    incX = (busLeft + busRight)/2;             // centre of bus connections so far
   } else {
     incX = LEFT_PAD + colW/2;
   }
+  // Extend the main bus to also include the incomer drop point (so the wire lands on a real bus)
+  busLeft  = Math.min(busLeft, incX);
+  busRight = Math.max(busRight, incX);
 
   // Row content heights — sectioned cols drop deeper because their spine starts at sub-bus.
   const maxBoxBot = rows.length
