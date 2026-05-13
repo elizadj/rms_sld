@@ -435,7 +435,15 @@ body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-co
       <div class="form-group"><label>Network Boundary</label>
         <select id="c-boundary"><option value="">Not specified</option><option value="inside">Inside EN</option><option value="outside">Outside EN</option></select>
       </div>
-      <div class="form-group full"><label>Notes</label><input id="c-notes" placeholder="e.g. 2PH DISC – 1PH METER, kiosk, etc."></div>
+      <div class="form-group full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <label style="margin:0">Notes</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text-muted);margin:0">
+            <input type="checkbox" id="c-show-notes"> Show on schematic
+          </label>
+        </div>
+        <input id="c-notes" placeholder="e.g. 2PH DISC – 1PH METER, kiosk, etc.">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn-delete" id="btn-delete-circuit" onclick="deleteCurrentCircuit()" style="display:none">Delete Circuit</button>
@@ -1169,8 +1177,9 @@ function buildSchematicSVG(page, sld){
       s += vText(boxX + lx, baseY, clipText(L, maxTextHpx, 10), {fontSize:10, fontWeight:'bold', fill:bText});
     });
 
-    // Sub-board notes display (below box). Shops is now rendered INSIDE the box as a column.
-    if(!isCirc && c.showNotes && c.notes){
+    // Notes display below the box — applies to BOTH circuits and sub-boards when their respective showNotes is ticked.
+    // Sub-boards also use the inside-box column for shops (handled earlier).
+    if(c.showNotes && c.notes){
       const _noteY = boxY + ROW_BOX_H + 12;
       s += `<text x="${cx}" y="${_noteY}" text-anchor="middle" font-size="8" font-style="italic" fill="#35679E">${esc(clipText(c.notes, boxW + 30, 8))}</text>`;
     }
@@ -1327,6 +1336,7 @@ function openAddCircuit(){
   document.getElementById('modal-circuit-title').textContent='Add Circuit';
   document.getElementById('btn-delete-circuit').style.display='none';
   ['c-amps','c-ct','c-rx','c-meter','c-nmi','c-kwh','c-fx','c-shop','c-name','c-notes','c-section'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('c-show-notes').checked = false;
   document.getElementById('c-phases').value='3';
   document.getElementById('c-status').value='Active';
   document.getElementById('c-mtype').value='metered';
@@ -1361,6 +1371,7 @@ function editCircuit(cid){
   document.getElementById('c-boundary').value=c.boundary||'';
   document.getElementById('c-section').value=c.section||'';
   document.getElementById('c-notes').value=c.notes||'';
+  document.getElementById('c-show-notes').checked = !!c.showNotes;
   openModal('modal-circuit');
 }
 function saveCircuit(){
@@ -1380,7 +1391,8 @@ function saveCircuit(){
     mtype:document.getElementById('c-mtype').value,
     boundary:document.getElementById('c-boundary').value,
     section:document.getElementById('c-section').value.trim().toUpperCase(),
-    notes:document.getElementById('c-notes').value.trim()
+    notes:document.getElementById('c-notes').value.trim(),
+    showNotes:document.getElementById('c-show-notes').checked
   };
   if(editingId){const c=page.circuits.find(x=>x.id===editingId);if(c)Object.assign(c,data);}
   else page.circuits.push({id:uid(),...data});
@@ -1848,7 +1860,8 @@ function importExcel(e){
           mtype:mt,
           boundary:r.Boundary||'',
           section:(r.BusSection||'').toString().toUpperCase().trim(),
-          notes:r.Notes||''
+          notes:r.Notes||'',
+          showNotes:false
         });
       });
       const subRows=wb.Sheets['SubBoards']?XLSX.utils.sheet_to_json(wb.Sheets['SubBoards']):[];
@@ -2010,6 +2023,7 @@ async function syncReload(){
       (p.circuits || []).forEach(c => {
         if(c.mtype === '3ph' || c.mtype === '1ph' || c.mtype === '2ph') c.mtype = 'metered';
         if(c.section) c.section = String(c.section).toUpperCase().trim();
+        if(typeof c.showNotes !== 'boolean') c.showNotes = false;
       });
       (p.subBoards || []).forEach(sb => {
         if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
@@ -2074,6 +2088,7 @@ function loadProject(e){
         (p.circuits||[]).forEach(c=>{
           if(c.mtype==='3ph'||c.mtype==='1ph'||c.mtype==='2ph') c.mtype='metered';
           if(c.section) c.section = String(c.section).toUpperCase().trim();
+          if(typeof c.showNotes !== 'boolean') c.showNotes = false;
         });
         (p.subBoards||[]).forEach(sb=>{
           if(sb.section) sb.section = String(sb.section).toUpperCase().trim();
@@ -2177,6 +2192,7 @@ function tryAutoLoad(){
       p.slds.forEach(s=>(s.pages||[]).forEach(pg=>{
         if(!Array.isArray(pg.preMeterTaps)) pg.preMeterTaps = [];
         (pg.preMeterTaps||[]).forEach(t=>{ if(typeof t.boundary !== 'string') t.boundary = ''; });
+        (pg.circuits||[]).forEach(c=>{ if(typeof c.showNotes !== 'boolean') c.showNotes = false; });
         (pg.subBoards||[]).forEach(sb=>{ if(typeof sb.boundary !== 'string') sb.boundary = ''; if(typeof sb.showNotes !== 'boolean') sb.showNotes = false; if(typeof sb.showShops !== 'boolean') sb.showShops = false; });
       }));
       project = p; return true;
