@@ -2309,6 +2309,24 @@ function buildReportEditor(){
     r.conclusion = r.conclusion || '';
     r.appendix_a = r.appendix_a || '';  r.appendix_b = r.appendix_b || '';
     r.appendix_c = r.appendix_c || '';  r.appendix_d = r.appendix_d || '';
+    // --- Audit Report restructure (Call 1): new fields with back-compat ---
+    r.coverTitle1 = r.coverTitle1 || 'TECHNICAL AUDIT REPORT';
+    r.coverTitle2 = r.coverTitle2 || ('EMBEDDED NETWORK | ' + (r.site || '').toUpperCase());
+    r.coverTechnician = r.coverTechnician || r.by || '';
+    r.coverAuditDate = r.coverAuditDate || r.date || '';
+    r.msbSections = Array.isArray(r.msbSections) ? r.msbSections : [];
+    r.subBoardsTable = Array.isArray(r.subBoardsTable) ? r.subBoardsTable : [];
+    r.meter_callout_categories   = r.meter_callout_categories   || '';
+    r.meter_callout_magnitude    = r.meter_callout_magnitude    || '';
+    r.meter_callout_impact       = r.meter_callout_impact       || '';
+    r.meter_callout_certificates = r.meter_callout_certificates || '';
+    r.meter_callout_uncertainties= r.meter_callout_uncertainties|| '';
+    (r.meterResults || []).forEach(m => {
+      if(typeof m.testCondition !== 'string') m.testCondition = '';
+      if(typeof m.reliability !== 'string') m.reliability = '';
+    });
+    r.outcomes_intro = r.outcomes_intro || '';
+    r.rec_intro = r.rec_intro || '';
   }
   r.includes = r.includes || {
     cover: true, docCtrl: true, distribution: true, execSummary: true,
@@ -2337,7 +2355,9 @@ function buildReportEditor(){
     <div class="rpt-span rpt-f"><label>2.3 Meter Accuracy Testing</label><textarea rows="2" oninput="_rptSave('method_acc',this.value)">${esc(r.method_acc)}</textarea></div>
     <div class="rpt-span rpt-f"><label>2.4 Reference Standards (one per line)</label><textarea rows="3" oninput="_rptSave('method_std',this.value)">${esc(r.method_std)}</textarea></div>`, 'methodology')}
   ${rptCard('3. Network Overview &amp; Findings', `
-    <div class="rpt-span rpt-f"><label>Observations — one paragraph per MSB (blank line between each)</label><textarea rows="8" oninput="_rptSave('networkObs',this.value)">${esc(r.networkObs)}</textarea></div>`, 'networkObs')}
+    <div class="rpt-span rpt-f"><label>Observations intro — free-text overview (one paragraph per MSB)</label><textarea rows="6" oninput="_rptSave('networkObs',this.value)">${esc(r.networkObs)}</textarea></div>
+    ${rptMsbSections(r)}
+    ${rptSubBoards(r)}`, 'networkObs')}
   ${rptCard('4. Meter Testing Results', rptMeters(r), 'meters')}
   ${rptCard('5. Audit Objective Outcomes', rptOutcomes(r), 'outcomes')}
   ${rptCard('6. Recommendations', rptRecs(r), 'recommendations')}
@@ -2346,7 +2366,7 @@ function buildReportEditor(){
   ${rptCard('8. Appendices', `
     <div class="rpt-span rpt-f"><label>Appendix A — Single Line Diagrams</label><textarea rows="2" oninput="_rptSave('appendix_a',this.value)">${esc(r.appendix_a)}</textarea></div>
     <div class="rpt-span rpt-f"><label>Appendix B — Meter Test Records</label><textarea rows="2" oninput="_rptSave('appendix_b',this.value)">${esc(r.appendix_b)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>Appendix C — Photographs</label><textarea rows="2" oninput="_rptSave('appendix_c',this.value)">${esc(r.appendix_c)}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Appendix C — Tenancy Schedule / NMI Register</label><textarea rows="2" oninput="_rptSave('appendix_c',this.value)">${esc(r.appendix_c)}</textarea></div>
     <div class="rpt-span rpt-f"><label>Appendix D — Tenancy Schedule / NMI Register</label><textarea rows="2" oninput="_rptSave('appendix_d',this.value)">${esc(r.appendix_d)}</textarea></div>`, 'appendices')}
 </div>`;
 }
@@ -2386,12 +2406,21 @@ function _toggleInclude(key, on){
 
 function rptCoverFields(r){
   return `
-    <div class="rpt-span rpt-f"><label>Report Title / Site Name</label><input value="${esc(r.site)}" oninput="_rptSave('site',this.value);const h=document.getElementById('rpc-h');if(h)h.textContent=this.value||'Site Name'"></div>
-    <div class="rpt-f"><label>Prepared For (Client)</label><input value="${esc(r.prepFor)}" oninput="_rptSave('prepFor',this.value)"></div>
-    <div class="rpt-f"><label>Prepared By (Technician)</label><input value="${esc(r.by)}" oninput="_rptSave('by',this.value)"></div>
+    <div class="rpt-span rpt-f"><label>Cover Title 1 (top line)</label><input value="${esc(r.coverTitle1||'TECHNICAL AUDIT REPORT')}" oninput="_rptSave('coverTitle1',this.value)"></div>
+    <div class="rpt-span rpt-f"><label>Cover Title 2 (second line — typically 'EMBEDDED NETWORK | SITE NAME')</label><input value="${esc(r.coverTitle2||'')}" oninput="_rptSave('coverTitle2',this.value)"></div>
+    <div class="rpt-span rpt-f"><label>Cover details</label>
+      <table class="rpt-t" style="margin-top:2px"><thead><tr><th style="width:38%">Field</th><th>Value</th></tr></thead><tbody>
+        <tr><td><b>Prepared for</b></td><td><input value="${esc(r.prepFor)}" oninput="_rptSave('prepFor',this.value)"></td></tr>
+        <tr><td><b>Prepared by</b></td><td><input value="${esc(r.by)}" oninput="_rptSave('by',this.value)"></td></tr>
+        <tr><td><b>Technician</b></td><td><input value="${esc(r.coverTechnician||'')}" oninput="_rptSave('coverTechnician',this.value)"></td></tr>
+        <tr><td><b>Audit Date</b></td><td><input type="date" value="${esc(r.coverAuditDate||'')}" oninput="_rptSave('coverAuditDate',this.value)"></td></tr>
+      </tbody></table>
+    </div>
+    <div class="rpt-span rpt-f" style="margin-top:6px;padding-top:8px;border-top:1px dashed #e5e7eb"><label style="opacity:.75">Legacy / back-compat fields (still used by preview &amp; some exports)</label></div>
+    <div class="rpt-span rpt-f"><label>Report Title / Site Name (legacy)</label><input value="${esc(r.site)}" oninput="_rptSave('site',this.value);const h=document.getElementById('rpc-h');if(h)h.textContent=this.value||'Site Name'"></div>
     <div class="rpt-f"><label>Report Reference</label><input value="${esc(r.ref)}" oninput="_rptSave('ref',this.value)"></div>
-    <div class="rpt-f"><label>Date</label><input type="date" value="${esc(r.date)}" oninput="_rptSave('date',this.value)"></div>
-    <div class="rpt-span rpt-f"><label>Revision</label><input value="${esc(r.rev||'Draft A')}" oninput="_rptSave('rev',this.value)"></div>`;
+    <div class="rpt-f"><label>Revision</label><input value="${esc(r.rev||'Draft A')}" oninput="_rptSave('rev',this.value)"></div>
+    <div class="rpt-f"><label>Date (legacy)</label><input type="date" value="${esc(r.date)}" oninput="_rptSave('date',this.value)"></div>`;
 }
 
 function rptDocCtrl(r){
@@ -2411,29 +2440,41 @@ function rptDocCtrl(r){
 }
 
 function rptMeters(r){
+  const resOpts = ['PASS','FAIL','BORDERLINE','INCONCLUSIVE','INVALID'];
+  const actOpts = ['Replace','Recalibrate','Monitor','Investigate','None'];
   const rows = (r.meterResults||[]).map((row,i)=>`<tr>
     <td><input value="${esc(row.meter)}" style="width:110px" onchange="rptRowSave('meterResults',${i},'meter',this.value)"></td>
     <td><input value="${esc(row.location)}" onchange="rptRowSave('meterResults',${i},'location',this.value)"></td>
     <td><input value="${esc(row.error)}" style="width:65px" onchange="rptRowSave('meterResults',${i},'error',this.value)"></td>
-    <td><select style="width:65px" onchange="rptRowSave('meterResults',${i},'result',this.value)"><option${row.result==='PASS'?' selected':''}>PASS</option><option${row.result==='FAIL'?' selected':''}>FAIL</option></select></td>
-    <td><select style="width:100px" onchange="rptRowSave('meterResults',${i},'action',this.value)"><option${row.action==='Replace'?' selected':''}>Replace</option><option${row.action==='Recalibrate'?' selected':''}>Recalibrate</option><option${row.action==='Monitor'?' selected':''}>Monitor</option><option${row.action==='None'?' selected':''}>None</option></select></td>
+    <td><input value="${esc(row.testCondition||'')}" style="width:120px" onchange="rptRowSave('meterResults',${i},'testCondition',this.value)"></td>
+    <td><input value="${esc(row.reliability||'')}" style="width:110px" onchange="rptRowSave('meterResults',${i},'reliability',this.value)"></td>
+    <td><select style="width:110px" onchange="rptRowSave('meterResults',${i},'result',this.value)">${resOpts.map(o=>`<option${row.result===o?' selected':''}>${o}</option>`).join('')}</select></td>
+    <td><select style="width:110px" onchange="rptRowSave('meterResults',${i},'action',this.value)">${actOpts.map(o=>`<option${row.action===o?' selected':''}>${o}</option>`).join('')}</select></td>
     <td class="rpt-del" onclick="rptRowDel('meterResults',${i})">×</td>
   </tr>`).join('');
-  return `<div class="rpt-tbl-wrap">
-    <table class="rpt-t"><thead><tr><th>Meter #</th><th>Tenancy / Location</th><th>Error</th><th>Result</th><th>Action</th><th></th></tr></thead>
+  return `
+    <div class="rpt-span rpt-f"><label>Test reliability categories</label><textarea rows="2" oninput="_rptSave('meter_callout_categories',this.value)">${esc(r.meter_callout_categories||'')}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Note on error magnitude</label><textarea rows="2" oninput="_rptSave('meter_callout_magnitude',this.value)">${esc(r.meter_callout_magnitude||'')}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Revenue impact</label><textarea rows="2" oninput="_rptSave('meter_callout_impact',this.value)">${esc(r.meter_callout_impact||'')}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Reference of test certificates</label><textarea rows="2" oninput="_rptSave('meter_callout_certificates',this.value)">${esc(r.meter_callout_certificates||'')}</textarea></div>
+    <div class="rpt-span rpt-f"><label>Outstanding uncertainties to be resolved prior to issue</label><textarea rows="2" oninput="_rptSave('meter_callout_uncertainties',this.value)">${esc(r.meter_callout_uncertainties||'')}</textarea></div>
+    <div class="rpt-tbl-wrap">
+    <table class="rpt-t"><thead><tr><th>Meter #</th><th>Tenancy / Location</th><th>Error</th><th>Test Condition</th><th>Reliability</th><th>Result</th><th>Action</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <span class="rpt-add-row" onclick="rptRowAdd('meterResults',{meter:'',location:'',error:'',result:'FAIL',action:'Replace'})">+ Add meter result</span>
+    <span class="rpt-add-row" onclick="rptRowAdd('meterResults',{meter:'',location:'',error:'',testCondition:'',reliability:'',result:'FAIL',action:'Replace'})">+ Add meter result</span>
   </div>`;
 }
 
 function rptOutcomes(r){
-  const opts=['OPEN','PARTIAL','PASS','FAIL','CLOSED'];
+  const opts=['OPEN','PARTIAL','PASS','FAIL','PENDING','CLOSED'];
   const rows = (r.auditOutcomes||[]).map((row,i)=>`<tr>
     <td style="width:36%">${esc(row.objective)}</td>
     <td><input value="${esc(row.finding)}" onchange="rptRowSave('auditOutcomes',${i},'finding',this.value)"></td>
-    <td style="width:90px"><select style="width:85px" onchange="rptRowSave('auditOutcomes',${i},'status',this.value)">${opts.map(s=>`<option${row.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
+    <td style="width:100px"><select style="width:95px" onchange="rptRowSave('auditOutcomes',${i},'status',this.value)">${opts.map(s=>`<option${row.status===s?' selected':''}>${s}</option>`).join('')}</select></td>
   </tr>`).join('');
-  return `<div class="rpt-tbl-wrap"><table class="rpt-t"><thead><tr><th>Objective</th><th>Finding</th><th style="width:90px">Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  return `
+    <div class="rpt-span rpt-f"><label>Section intro note</label><textarea rows="3" oninput="_rptSave('outcomes_intro',this.value)">${esc(r.outcomes_intro||'')}</textarea></div>
+    <div class="rpt-tbl-wrap"><table class="rpt-t"><thead><tr><th>Objective</th><th>Finding</th><th style="width:100px">Status</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function rptRecs(r){
@@ -2445,10 +2486,120 @@ function rptRecs(r){
     <td style="width:100px"><select style="width:95px" onchange="rptRowSave('recommendations',${i},'timeframe',this.value)">${tf.map(o=>`<option value="${o.v}"${row.timeframe===o.v?' selected':''}>${o.l}</option>`).join('')}</select></td>
     <td class="rpt-del" onclick="rptRowDel('recommendations',${i})">×</td>
   </tr>`).join('');
-  return `<div class="rpt-tbl-wrap">
+  return `
+    <div class="rpt-span rpt-f"><label>Recommendations intro</label><textarea rows="3" oninput="_rptSave('rec_intro',this.value)">${esc(r.rec_intro||'')}</textarea></div>
+    <div class="rpt-tbl-wrap">
     <table class="rpt-t"><thead><tr><th>Ref</th><th>Recommendation</th><th>Owner</th><th>Timeframe</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
     <span class="rpt-add-row" onclick="rptRowAdd('recommendations',{ref:'',rec:'',owner:'',timeframe:'immediate'})">+ Add recommendation</span>
+  </div>`;
+}
+
+function _rptNestedSave(pathStr, val){
+  const r = project.report || (project.report = {});
+  const parts = String(pathStr).split('.');
+  let cur = r;
+  for(let i=0;i<parts.length-1;i++){
+    const k = parts[i];
+    const nk = parts[i+1];
+    const wantArr = /^\d+$/.test(nk);
+    if(cur[k] === undefined || cur[k] === null){
+      cur[k] = wantArr ? [] : {};
+    }
+    cur = cur[k];
+  }
+  cur[parts[parts.length-1]] = val;
+  autoSave();
+}
+
+function rptMsbAdd(){
+  const r = project.report || (project.report = {});
+  if(!Array.isArray(r.msbSections)) r.msbSections = [];
+  r.msbSections.push({ name:'', supplyConfig:[], observations:[] });
+  buildReportEditor(); autoSave();
+}
+function rptMsbDel(idx){
+  const r = project.report || {};
+  if(Array.isArray(r.msbSections)){ r.msbSections.splice(idx,1); buildReportEditor(); autoSave(); }
+}
+function rptMsbConfigAdd(idx){
+  const r = project.report || {};
+  const m = (r.msbSections||[])[idx]; if(!m) return;
+  if(!Array.isArray(m.supplyConfig)) m.supplyConfig = [];
+  m.supplyConfig.push({ circuit:'', en:'', gateMeter:'' });
+  buildReportEditor(); autoSave();
+}
+function rptMsbConfigDel(midx, cidx){
+  const m = ((project.report||{}).msbSections||[])[midx]; if(!m||!m.supplyConfig) return;
+  m.supplyConfig.splice(cidx,1); buildReportEditor(); autoSave();
+}
+function rptMsbObsAdd(idx, type){
+  const m = ((project.report||{}).msbSections||[])[idx]; if(!m) return;
+  if(!Array.isArray(m.observations)) m.observations = [];
+  m.observations.push({ type: type==='callout'?'callout':'normal', text:'' });
+  buildReportEditor(); autoSave();
+}
+function rptMsbObsDel(midx, oidx){
+  const m = ((project.report||{}).msbSections||[])[midx]; if(!m||!m.observations) return;
+  m.observations.splice(oidx,1); buildReportEditor(); autoSave();
+}
+
+function rptMsbSections(r){
+  const list = Array.isArray(r.msbSections) ? r.msbSections : [];
+  const blocks = list.map((m, mi) => {
+    const cfgRows = (m.supplyConfig||[]).map((c, ci) => `<tr>
+      <td><input value="${esc(c.circuit||'')}" onchange="_rptNestedSave('msbSections.${mi}.supplyConfig.${ci}.circuit', this.value)"></td>
+      <td><input value="${esc(c.en||'')}" onchange="_rptNestedSave('msbSections.${mi}.supplyConfig.${ci}.en', this.value)"></td>
+      <td><input value="${esc(c.gateMeter||'')}" onchange="_rptNestedSave('msbSections.${mi}.supplyConfig.${ci}.gateMeter', this.value)"></td>
+      <td class="rpt-del" onclick="rptMsbConfigDel(${mi},${ci})">×</td>
+    </tr>`).join('');
+    const obsRows = (m.observations||[]).map((o, oi) => `<div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px">
+      <select style="width:90px;flex:0 0 auto" onchange="_rptNestedSave('msbSections.${mi}.observations.${oi}.type', this.value)">
+        <option value="normal"${o.type==='callout'?'':' selected'}>Normal</option>
+        <option value="callout"${o.type==='callout'?' selected':''}>Callout</option>
+      </select>
+      <textarea rows="2" style="flex:1" oninput="_rptNestedSave('msbSections.${mi}.observations.${oi}.text', this.value)">${esc(o.text||'')}</textarea>
+      <span class="rpt-del" style="flex:0 0 auto" onclick="rptMsbObsDel(${mi},${oi})">×</span>
+    </div>`).join('');
+    return `<div style="border:1px solid #e5e7eb;border-radius:5px;padding:10px;margin-bottom:10px;background:#fafafa">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <label style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">MSB Name</label>
+        <input value="${esc(m.name||'')}" style="flex:1" onchange="_rptNestedSave('msbSections.${mi}.name', this.value)">
+        <span class="rpt-del" onclick="rptMsbDel(${mi})" title="Delete this MSB section">× MSB</span>
+      </div>
+      <div style="margin-bottom:6px"><label style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Supply Configuration</label></div>
+      <div class="rpt-tbl-wrap"><table class="rpt-t"><thead><tr><th>Circuit / Supply</th><th>Embedded Network</th><th>Gate Meter # / NMI</th><th></th></tr></thead><tbody>${cfgRows}</tbody></table>
+        <span class="rpt-add-row" onclick="rptMsbConfigAdd(${mi})">+ Add supply row</span>
+      </div>
+      <div style="margin-top:10px;margin-bottom:6px"><label style="font-size:10px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Observations</label></div>
+      <div>${obsRows || '<div style="font-size:11px;color:var(--text-muted);font-style:italic;margin-bottom:6px">No observations yet.</div>'}</div>
+      <span class="rpt-add-row" onclick="rptMsbObsAdd(${mi},'normal')">+ Add observation</span>
+      <span class="rpt-add-row" style="margin-left:14px" onclick="rptMsbObsAdd(${mi},'callout')">+ Add callout</span>
+    </div>`;
+  }).join('');
+  return `<div class="rpt-span">
+    <div style="font-size:11px;font-weight:700;color:var(--text);margin:8px 0 6px;text-transform:uppercase;letter-spacing:.5px">Per-MSB structured sections</div>
+    ${blocks || '<div style="font-size:11px;color:var(--text-muted);font-style:italic;margin-bottom:8px">No MSB sections yet.</div>'}
+    <span class="rpt-add-row" onclick="rptMsbAdd()">+ Add MSB section</span>
+  </div>`;
+}
+
+function rptSubBoards(r){
+  const list = Array.isArray(r.subBoardsTable) ? r.subBoardsTable : [];
+  const rows = list.map((row,i)=>`<tr>
+    <td><input value="${esc(row.subBoard||'')}" onchange="rptRowSave('subBoardsTable',${i},'subBoard',this.value)"></td>
+    <td><input value="${esc(row.parentMSB||'')}" onchange="rptRowSave('subBoardsTable',${i},'parentMSB',this.value)"></td>
+    <td><input value="${esc(row.enStatus||'')}" onchange="rptRowSave('subBoardsTable',${i},'enStatus',this.value)"></td>
+    <td><input value="${esc(row.tenancyRoll||'')}" onchange="rptRowSave('subBoardsTable',${i},'tenancyRoll',this.value)"></td>
+    <td class="rpt-del" onclick="rptRowDel('subBoardsTable',${i})">×</td>
+  </tr>`).join('');
+  return `<div class="rpt-span">
+    <div style="font-size:11px;font-weight:700;color:var(--text);margin:8px 0 6px;text-transform:uppercase;letter-spacing:.5px">3.5 Sub-Boards</div>
+    <div class="rpt-tbl-wrap">
+      <table class="rpt-t"><thead><tr><th>Sub-Board</th><th>Parent MSB</th><th>EN Status</th><th>Tenancy Roll</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <span class="rpt-add-row" onclick="rptRowAdd('subBoardsTable',{subBoard:'',parentMSB:'',enStatus:'',tenancyRoll:''})">+ Add sub-board</span>
+    </div>
   </div>`;
 }
 
@@ -2587,51 +2738,67 @@ async function downloadReportDocx(){
   const D = docx;
   const children = [];
   const para = t => new D.Paragraph(String(t==null?'':t));
+  const boldPara = t => new D.Paragraph({children:[new D.TextRun({text:String(t==null?'':t), bold:true})]});
+  const italicBoldPara = t => new D.Paragraph({children:[new D.TextRun({text:String(t==null?'':t), bold:true, italics:true})]});
+  const italicPara = t => new D.Paragraph({children:[new D.TextRun({text:String(t==null?'':t), italics:true})]});
   const h1 = t => new D.Paragraph({text:t, heading:D.HeadingLevel.HEADING_1});
   const h2 = t => new D.Paragraph({text:t, heading:D.HeadingLevel.HEADING_2});
+  const h3Italic = t => new D.Paragraph({children:[new D.TextRun({text:t, bold:true, italics:true})], heading:D.HeadingLevel.HEADING_3});
   const bul = lines => String(lines||'').split(/\n/).filter(l=>l.trim()).map(l => new D.Paragraph({text:l.replace(/^[-•]\s*/,''), bullet:{level:0}}));
   const paras = s => String(s||'').split(/\n\n+/).filter(l=>l.trim()).map(p => new D.Paragraph(p));
+  const headerCell = txt => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:String(txt||''), bold:true})]})]});
+  const bodyCell = txt => new D.TableCell({children:[new D.Paragraph(String(txt||''))]});
 
-  // Cover
+  // Cover page
   if(inc.cover !== false){
-    children.push(new D.Paragraph({text:'ELECTRICAL NETWORK AUDIT REPORT', heading:D.HeadingLevel.TITLE, alignment:D.AlignmentType.CENTER}));
-    if(r.site) children.push(new D.Paragraph({text:r.site, heading:D.HeadingLevel.HEADING_1, alignment:D.AlignmentType.CENTER}));
+    const coverTitle1 = r.coverTitle1 || 'TECHNICAL AUDIT REPORT';
+    const coverTitle2 = r.coverTitle2 || ('EMBEDDED NETWORK | ' + String(r.site||'').toUpperCase());
+    children.push(new D.Paragraph({
+      alignment:D.AlignmentType.CENTER,
+      children:[new D.TextRun({text:coverTitle1, bold:true, size:48})]
+    }));
+    children.push(new D.Paragraph({
+      alignment:D.AlignmentType.CENTER,
+      children:[new D.TextRun({text:coverTitle2, bold:true, size:32})]
+    }));
     children.push(new D.Paragraph({text:''}));
-    const coverRows = [];
-    if(r.prepFor) coverRows.push(['Prepared for', r.prepFor]);
-    if(r.by)      coverRows.push(['Prepared by', r.by]);
-    if(r.date)    coverRows.push(['Date', r.date]);
-    if(r.ref)     coverRows.push(['Reference', r.ref]);
-    if(r.rev)     coverRows.push(['Revision', r.rev]);
-    if(coverRows.length){
-      children.push(new D.Table({
-        rows: coverRows.map(pair => new D.TableRow({
-          children:[
-            new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:pair[0], bold:true})]})], width:{size:30, type:D.WidthType.PERCENTAGE}}),
-            new D.TableCell({children:[new D.Paragraph(String(pair[1]||''))], width:{size:70, type:D.WidthType.PERCENTAGE}})
-          ]
-        }))
-      }));
-    }
+    const coverPairs = [
+      ['Prepared for', r.prepFor || ''],
+      ['Prepared by',  r.by || ''],
+      ['Technician',   r.coverTechnician || ''],
+      ['Audit Date',   r.coverAuditDate || r.date || '']
+    ];
+    children.push(new D.Table({
+      rows: coverPairs.map(pair => new D.TableRow({
+        children:[
+          new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:pair[0], bold:true})]})], width:{size:30, type:D.WidthType.PERCENTAGE}}),
+          new D.TableCell({children:[new D.Paragraph(String(pair[1]||''))], width:{size:70, type:D.WidthType.PERCENTAGE}})
+        ]
+      }))
+    }));
+    children.push(new D.Paragraph({text:''}));
   }
+
   // Document Control
   if(inc.docCtrl !== false && Array.isArray(r.revisions) && r.revisions.length){
     children.push(h1('Document Control'));
     const header = ['Rev','Date','Description','By','Approved'];
     children.push(new D.Table({
       rows: [
-        new D.TableRow({children: header.map(h => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:h, bold:true})]})]}))}),
+        new D.TableRow({children: header.map(headerCell)}),
         ...r.revisions.map(rv => new D.TableRow({
-          children: ['rev','date','desc','by','approved'].map(k => new D.TableCell({children:[new D.Paragraph(String(rv[k]||''))]}))
+          children: ['rev','date','desc','by','approved'].map(k => bodyCell(rv[k]))
         }))
       ]
     }));
   }
+
   // Distribution
   if(inc.distribution !== false && r.distribution){
     children.push(h1('Distribution'));
     bul(r.distribution).forEach(p => children.push(p));
   }
+
   // Executive Summary
   if(inc.execSummary !== false && (r.execSummary || r.keyFindings || r.headlineRecs)){
     children.push(h1('Executive Summary'));
@@ -2639,6 +2806,7 @@ async function downloadReportDocx(){
     if(r.keyFindings){ children.push(h2('Key Findings')); bul(r.keyFindings).forEach(p => children.push(p)); }
     if(r.headlineRecs){ children.push(h2('Headline Recommendations')); bul(r.headlineRecs).forEach(p => children.push(p)); }
   }
+
   // Scope
   if(inc.scope !== false && (r.scope_site || r.scope_obj || r.scope_in || r.scope_out)){
     children.push(h1('1. Scope and Objectives'));
@@ -2647,6 +2815,7 @@ async function downloadReportDocx(){
     if(r.scope_in){   children.push(h2('1.3 In Scope')); bul(r.scope_in).forEach(p=>children.push(p)); }
     if(r.scope_out){  children.push(h2('1.4 Out of Scope')); bul(r.scope_out).forEach(p=>children.push(p)); }
   }
+
   // Methodology
   if(inc.methodology !== false && (r.method_doc || r.method_insp || r.method_acc || r.method_std)){
     children.push(h1('2. Methodology'));
@@ -2655,67 +2824,151 @@ async function downloadReportDocx(){
     if(r.method_acc){  children.push(h2('2.3 Meter Accuracy Testing')); paras(r.method_acc).forEach(p=>children.push(p)); }
     if(r.method_std){  children.push(h2('2.4 Reference Standards')); bul(r.method_std).forEach(p=>children.push(p)); }
   }
-  // Network Observations
-  if(inc.networkObs !== false && r.networkObs){
-    children.push(h1('3. Network Overview and Findings'));
-    paras(r.networkObs).forEach(p => children.push(p));
+
+  // Section 3 - Network Overview and Findings
+  if(inc.networkObs !== false){
+    const msbs = Array.isArray(r.msbSections) ? r.msbSections : [];
+    const subs = Array.isArray(r.subBoardsTable) ? r.subBoardsTable : [];
+    if(r.networkObs || msbs.length || subs.length){
+      children.push(h1('3. Network Overview and Findings'));
+      if(r.networkObs) paras(r.networkObs).forEach(p => children.push(p));
+      msbs.forEach((m, mi) => {
+        const num = '3.' + (mi+1);
+        children.push(h2(num + ' ' + String(m.name||'').trim()));
+        const cfg = Array.isArray(m.supplyConfig) ? m.supplyConfig : [];
+        if(cfg.length){
+          children.push(h3Italic('Supply Configuration'));
+          const cfgHeader = ['Circuit / Supply','Embedded Network','Gate Meter # / NMI'];
+          children.push(new D.Table({
+            rows:[
+              new D.TableRow({children: cfgHeader.map(headerCell)}),
+              ...cfg.map(c => new D.TableRow({
+                children:[bodyCell(c.circuit), bodyCell(c.en), bodyCell(c.gateMeter)]
+              }))
+            ]
+          }));
+        }
+        const obs = Array.isArray(m.observations) ? m.observations : [];
+        if(obs.length){
+          children.push(h3Italic('Observations'));
+          obs.forEach(o => {
+            const txt = String(o.text||'').trim();
+            if(!txt) return;
+            if(o.type === 'callout') children.push(boldPara(txt));
+            else children.push(para(txt));
+          });
+        }
+      });
+      if(subs.length){
+        children.push(h2('3.' + (msbs.length+1) + ' Sub-Boards'));
+        const sbHeader = ['Sub-Board','Parent MSB','EN Status','Tenancy Roll'];
+        children.push(new D.Table({
+          rows:[
+            new D.TableRow({children: sbHeader.map(headerCell)}),
+            ...subs.map(s => new D.TableRow({
+              children:[bodyCell(s.subBoard), bodyCell(s.parentMSB), bodyCell(s.enStatus), bodyCell(s.tenancyRoll)]
+            }))
+          ]
+        }));
+      }
+    }
   }
-  // Meters
-  if(inc.meters !== false && Array.isArray(r.meterResults) && r.meterResults.length){
-    children.push(h1('4. Meter Testing Results'));
-    const header = ['Meter #','Location','Error','Result','Action'];
-    children.push(new D.Table({
-      rows: [
-        new D.TableRow({children: header.map(h => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:h, bold:true})]})]}))}),
-        ...r.meterResults.map(m => new D.TableRow({
-          children: ['meter','location','error','result','action'].map(k => new D.TableCell({children:[new D.Paragraph(String(m[k]||''))]}))
-        }))
-      ]
-    }));
+
+  // Section 4 - Meter Testing Results
+  if(inc.meters !== false){
+    const mrs = Array.isArray(r.meterResults) ? r.meterResults : [];
+    const callouts = [
+      r.meter_callout_categories,
+      r.meter_callout_magnitude,
+      r.meter_callout_impact,
+      r.meter_callout_certificates,
+      r.meter_callout_uncertainties
+    ];
+    if(mrs.length || callouts.some(c => String(c||'').trim())){
+      children.push(h1('4. Meter Testing Results'));
+      callouts.forEach(c => {
+        const t = String(c||'').trim();
+        if(t) children.push(boldPara(t));
+      });
+      if(mrs.length){
+        const header = ['Meter #','Location','Error','Test Condition','Reliability','Result','Action'];
+        children.push(new D.Table({
+          rows:[
+            new D.TableRow({children: header.map(headerCell)}),
+            ...mrs.map(m => new D.TableRow({
+              children: ['meter','location','error','testCondition','reliability','result','action'].map(k => bodyCell(m[k]))
+            }))
+          ]
+        }));
+      }
+    }
   }
-  // Outcomes
+
+  // Section 5 - Audit Objective Outcomes
   if(inc.outcomes !== false && Array.isArray(r.auditOutcomes) && r.auditOutcomes.length){
     children.push(h1('5. Audit Objective Outcomes'));
+    if(String(r.outcomes_intro||'').trim()){
+      children.push(italicBoldPara(r.outcomes_intro));
+    }
     const header = ['Objective','Finding','Status'];
     children.push(new D.Table({
       rows: [
-        new D.TableRow({children: header.map(h => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:h, bold:true})]})]}))}),
+        new D.TableRow({children: header.map(headerCell)}),
         ...r.auditOutcomes.map(o => new D.TableRow({
-          children: ['objective','finding','status'].map(k => new D.TableCell({children:[new D.Paragraph(String(o[k]||''))]}))
+          children: ['objective','finding','status'].map(k => bodyCell(o[k]))
         }))
       ]
     }));
   }
-  // Recommendations
-  if(inc.recommendations !== false && Array.isArray(r.recommendations) && r.recommendations.length){
-    children.push(h1('6. Recommendations'));
-    const header = ['Ref','Recommendation','Owner','Timeframe'];
-    children.push(new D.Table({
-      rows: [
-        new D.TableRow({children: header.map(h => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:h, bold:true})]})]}))}),
-        ...r.recommendations.map(rc => new D.TableRow({
-          children: ['ref','rec','owner','timeframe'].map(k => new D.TableCell({children:[new D.Paragraph(String(rc[k]||''))]}))
-        }))
-      ]
-    }));
+
+  // Section 6 - Recommendations
+  if(inc.recommendations !== false){
+    const recs = Array.isArray(r.recommendations) ? r.recommendations : [];
+    if(recs.length || String(r.rec_intro||'').trim()){
+      children.push(h1('6. Recommendations'));
+      if(String(r.rec_intro||'').trim()) paras(r.rec_intro).forEach(p => children.push(p));
+      const buckets = [
+        { label:'6.1 Immediate', tf:'immediate' },
+        { label:'6.2 Short Term (1–6 months)', tf:'short' },
+        { label:'6.3 Long Term (6+ months / capital programme)', tf:'long' }
+      ];
+      buckets.forEach(b => {
+        const rows = recs.filter(rc => (rc.timeframe||'') === b.tf);
+        if(!rows.length) return;
+        children.push(h2(b.label));
+        const header = ['Ref','Recommendation','Owner'];
+        children.push(new D.Table({
+          rows:[
+            new D.TableRow({children: header.map(headerCell)}),
+            ...rows.map(rc => new D.TableRow({
+              children: ['ref','rec','owner'].map(k => bodyCell(rc[k]))
+            }))
+          ]
+        }));
+      });
+    }
   }
-  // Conclusion
+
+  // Section 7 - Conclusion
   if(inc.conclusion !== false && r.conclusion){
     children.push(h1('7. Conclusion'));
     paras(r.conclusion).forEach(p => children.push(p));
   }
-  // Appendices
+
+  // Section 8 - Appendices
   if(inc.appendices !== false){
+    children.push(h1('8. Appendices'));
     const apps = [
       ['Appendix A — Single Line Diagrams', r.appendix_a],
       ['Appendix B — Meter Test Records',   r.appendix_b],
-      ['Appendix C — Photographs',          r.appendix_c],
-      ['Appendix D — Tenancy Schedule / NMI Register', r.appendix_d]
+      ['Appendix C — Tenancy Schedule / NMI Register', r.appendix_c]
     ];
-    if(apps.some(a => a[1])){
-      children.push(h1('8. Appendices'));
-      apps.forEach(a => { if(a[1]){ children.push(h2(a[0])); paras(a[1]).forEach(p=>children.push(p)); } });
-    }
+    apps.forEach(a => {
+      children.push(h2(a[0]));
+      const txt = String(a[1]||'').trim();
+      if(txt) paras(a[1]).forEach(p => children.push(p));
+      else children.push(italicPara('To be appended'));
+    });
   }
 
   const doc = new D.Document({sections:[{properties:{}, children}]});
@@ -2732,80 +2985,195 @@ function _buildReportHtmlForExport(r, inc){
   const bullets = s => s ? '<ul>'+String(s).split('\n').filter(l=>l.trim()).map(l=>`<li>${e2(l.replace(/^[-•]\s*/,''))}</li>`).join('')+'</ul>' : '';
   const paras   = s => s ? String(s).split(/\n\n+/).filter(l=>l.trim()).map(l=>`<p>${e2(l)}</p>`).join('') : '';
   const has = (...ff) => ff.some(f=>Array.isArray(f)?f.length>0:String(f||'').trim());
+
+  const H2 = 'color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt';
+  const H3 = 'color:#35679E;margin-top:8pt';
+  const H3i = 'color:#35679E;margin-top:8pt;font-style:italic';
+  const TH = 'background:#232C63;color:#fff;padding:5pt 8pt;text-align:left;border:1px solid #232C63';
+  const TD = 'padding:4pt 8pt;border:1px solid #d1d5db;vertical-align:top';
+  const TBL = 'width:100%;border-collapse:collapse;font-size:9pt;margin-top:6pt';
+  const tableHead = cols => `<thead><tr>${cols.map(c=>`<th style="${TH}">${e2(c)}</th>`).join('')}</tr></thead>`;
+  const tableRow  = vals => `<tr>${vals.map(v=>`<td style="${TD}">${e2(v)}</td>`).join('')}</tr>`;
+
   let h = '';
+
+  // Cover
   if(inc.cover !== false){
+    const coverTitle1 = r.coverTitle1 || 'TECHNICAL AUDIT REPORT';
+    const coverTitle2 = r.coverTitle2 || ('EMBEDDED NETWORK | ' + String(r.site||'').toUpperCase());
     h += `<div style="text-align:center;margin-bottom:18pt">
-      <div style="font-size:9pt;letter-spacing:2pt;text-transform:uppercase;color:#6b7280">Electrical Network Audit Report</div>
-      <h1 style="font-size:22pt;color:#232C63;margin:8pt 0">${e2(r.site||'Site Name')}</h1>
-      <div style="font-size:10pt;color:#374151;line-height:1.8">
-        ${r.prepFor?`<div><b>Prepared for</b> ${e2(r.prepFor)}</div>`:''}
-        ${r.by?`<div><b>Prepared by</b> ${e2(r.by)}</div>`:''}
-        ${r.date?`<div><b>Date</b> ${e2(r.date)}</div>`:''}
-        ${r.ref?`<div><b>Reference</b> ${e2(r.ref)}</div>`:''}
-        ${r.rev?`<div><b>Revision</b> ${e2(r.rev)}</div>`:''}
-      </div>
+      <h1 style="font-size:22pt;color:#232C63;margin:14pt 0 4pt;font-weight:700">${e2(coverTitle1)}</h1>
+      <h2 style="font-size:15pt;color:#35679E;margin:4pt 0 14pt;border:0;padding:0;font-weight:700">${e2(coverTitle2)}</h2>
     </div>`;
+    const coverPairs = [
+      ['Prepared for', r.prepFor || ''],
+      ['Prepared by',  r.by || ''],
+      ['Technician',   r.coverTechnician || ''],
+      ['Audit Date',   r.coverAuditDate || r.date || '']
+    ];
+    h += `<table style="${TBL};max-width:480pt;margin:0 auto 18pt"><tbody>`;
+    coverPairs.forEach(p => {
+      h += `<tr><td style="${TD};font-weight:700;width:35%">${e2(p[0])}</td><td style="${TD}">${e2(p[1])}</td></tr>`;
+    });
+    h += '</tbody></table>';
   }
+
+  // Document Control
   if(inc.docCtrl !== false && has(r.revisions)){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">Document Control</h2>';
-    h += '<table style="width:100%;border-collapse:collapse;font-size:9pt;margin-top:6pt"><thead><tr style="background:#232C63;color:#fff"><th style="padding:5pt 8pt;text-align:left">Revision</th><th style="padding:5pt 8pt;text-align:left">Date</th><th style="padding:5pt 8pt;text-align:left">Description</th><th style="padding:5pt 8pt;text-align:left">Prepared by</th><th style="padding:5pt 8pt;text-align:left">Approved</th></tr></thead><tbody>';
-    (r.revisions||[]).forEach(row=>{ h+=`<tr><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.rev)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.date)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.desc)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.by)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.approved)}</td></tr>`; });
+    h += `<h2 style="${H2}">Document Control</h2>`;
+    h += `<table style="${TBL}">${tableHead(['Revision','Date','Description','Prepared by','Approved'])}<tbody>`;
+    (r.revisions||[]).forEach(row => { h += tableRow([row.rev, row.date, row.desc, row.by, row.approved]); });
     h += '</tbody></table>';
   }
+
+  // Distribution
   if(inc.distribution !== false && r.distribution){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">Distribution</h2>'+bullets(r.distribution);
+    h += `<h2 style="${H2}">Distribution</h2>` + bullets(r.distribution);
   }
+
+  // Executive Summary
   if(inc.execSummary !== false && has(r.execSummary, r.keyFindings, r.headlineRecs)){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">Executive Summary</h2>';
+    h += `<h2 style="${H2}">Executive Summary</h2>`;
     if(r.execSummary)  h += paras(r.execSummary);
-    if(r.keyFindings)  h += '<h3 style="color:#35679E;margin-top:8pt">Key Findings</h3>'+bullets(r.keyFindings);
-    if(r.headlineRecs) h += '<h3 style="color:#35679E;margin-top:8pt">Headline Recommendations</h3>'+bullets(r.headlineRecs);
+    if(r.keyFindings)  h += `<h3 style="${H3}">Key Findings</h3>` + bullets(r.keyFindings);
+    if(r.headlineRecs) h += `<h3 style="${H3}">Headline Recommendations</h3>` + bullets(r.headlineRecs);
   }
+
+  // 1. Scope
   if(inc.scope !== false && has(r.scope_site, r.scope_obj, r.scope_in, r.scope_out)){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">1. Scope &amp; Objectives</h2>';
-    if(r.scope_site) h += '<h3 style="color:#35679E;margin-top:8pt">1.1 Site</h3>'+paras(r.scope_site);
-    if(r.scope_obj)  h += '<h3 style="color:#35679E;margin-top:8pt">1.2 Audit Objectives</h3>'+bullets(r.scope_obj);
-    if(r.scope_in)   h += '<h3 style="color:#35679E;margin-top:8pt">1.3 In Scope</h3>'+bullets(r.scope_in);
-    if(r.scope_out)  h += '<h3 style="color:#35679E;margin-top:8pt">1.4 Out of Scope</h3>'+bullets(r.scope_out);
+    h += `<h2 style="${H2}">1. Scope &amp; Objectives</h2>`;
+    if(r.scope_site) h += `<h3 style="${H3}">1.1 Site</h3>` + paras(r.scope_site);
+    if(r.scope_obj)  h += `<h3 style="${H3}">1.2 Audit Objectives</h3>` + bullets(r.scope_obj);
+    if(r.scope_in)   h += `<h3 style="${H3}">1.3 In Scope</h3>` + bullets(r.scope_in);
+    if(r.scope_out)  h += `<h3 style="${H3}">1.4 Out of Scope</h3>` + bullets(r.scope_out);
   }
+
+  // 2. Methodology
   if(inc.methodology !== false && has(r.method_doc, r.method_insp, r.method_acc, r.method_std)){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">2. Methodology</h2>';
-    if(r.method_doc)  h += '<h3 style="color:#35679E;margin-top:8pt">2.1 Documentation Review</h3>'+paras(r.method_doc);
-    if(r.method_insp) h += '<h3 style="color:#35679E;margin-top:8pt">2.2 Physical Inspection</h3>'+paras(r.method_insp);
-    if(r.method_acc)  h += '<h3 style="color:#35679E;margin-top:8pt">2.3 Meter Accuracy Testing</h3>'+paras(r.method_acc);
-    if(r.method_std)  h += '<h3 style="color:#35679E;margin-top:8pt">2.4 Reference Standards</h3>'+bullets(r.method_std);
+    h += `<h2 style="${H2}">2. Methodology</h2>`;
+    if(r.method_doc)  h += `<h3 style="${H3}">2.1 Documentation Review</h3>` + paras(r.method_doc);
+    if(r.method_insp) h += `<h3 style="${H3}">2.2 Physical Inspection</h3>` + paras(r.method_insp);
+    if(r.method_acc)  h += `<h3 style="${H3}">2.3 Meter Accuracy Testing</h3>` + paras(r.method_acc);
+    if(r.method_std)  h += `<h3 style="${H3}">2.4 Reference Standards</h3>` + bullets(r.method_std);
   }
-  if(inc.networkObs !== false && r.networkObs){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">3. Network Overview &amp; Findings</h2>'+paras(r.networkObs);
+
+  // 3. Network Overview and Findings
+  if(inc.networkObs !== false){
+    const msbs = Array.isArray(r.msbSections) ? r.msbSections : [];
+    const subs = Array.isArray(r.subBoardsTable) ? r.subBoardsTable : [];
+    if(r.networkObs || msbs.length || subs.length){
+      h += `<h2 style="${H2}">3. Network Overview &amp; Findings</h2>`;
+      if(r.networkObs) h += paras(r.networkObs);
+      msbs.forEach((m, mi) => {
+        const num = '3.' + (mi+1);
+        h += `<h2 style="${H2}">${num} ${e2(String(m.name||'').trim())}</h2>`;
+        const cfg = Array.isArray(m.supplyConfig) ? m.supplyConfig : [];
+        if(cfg.length){
+          h += `<h3 style="${H3i}">Supply Configuration</h3>`;
+          h += `<table style="${TBL}">${tableHead(['Circuit / Supply','Embedded Network','Gate Meter # / NMI'])}<tbody>`;
+          cfg.forEach(c => { h += tableRow([c.circuit, c.en, c.gateMeter]); });
+          h += '</tbody></table>';
+        }
+        const obs = Array.isArray(m.observations) ? m.observations : [];
+        if(obs.length){
+          h += `<h3 style="${H3i}">Observations</h3>`;
+          obs.forEach(o => {
+            const txt = String(o.text||'').trim();
+            if(!txt) return;
+            if(o.type === 'callout') h += `<p style="font-weight:bold">${e2(txt)}</p>`;
+            else h += `<p>${e2(txt)}</p>`;
+          });
+        }
+      });
+      if(subs.length){
+        h += `<h2 style="${H2}">3.${msbs.length+1} Sub-Boards</h2>`;
+        h += `<table style="${TBL}">${tableHead(['Sub-Board','Parent MSB','EN Status','Tenancy Roll'])}<tbody>`;
+        subs.forEach(s => { h += tableRow([s.subBoard, s.parentMSB, s.enStatus, s.tenancyRoll]); });
+        h += '</tbody></table>';
+      }
+    }
   }
-  if(inc.meters !== false && has(r.meterResults)){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">4. Meter Testing Results</h2>';
-    h += '<table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr style="background:#232C63;color:#fff"><th style="padding:5pt 8pt;text-align:left">Meter #</th><th style="padding:5pt 8pt;text-align:left">Location</th><th style="padding:5pt 8pt;text-align:left">Error</th><th style="padding:5pt 8pt;text-align:left">Result</th><th style="padding:5pt 8pt;text-align:left">Action</th></tr></thead><tbody>';
-    (r.meterResults||[]).forEach(row=>{ h+=`<tr><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.meter)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.location)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.error)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.result)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.action)}</td></tr>`; });
-    h += '</tbody></table>';
+
+  // 4. Meter Testing Results
+  if(inc.meters !== false){
+    const mrs = Array.isArray(r.meterResults) ? r.meterResults : [];
+    const callouts = [
+      r.meter_callout_categories,
+      r.meter_callout_magnitude,
+      r.meter_callout_impact,
+      r.meter_callout_certificates,
+      r.meter_callout_uncertainties
+    ];
+    if(mrs.length || callouts.some(c => String(c||'').trim())){
+      h += `<h2 style="${H2}">4. Meter Testing Results</h2>`;
+      callouts.forEach(c => {
+        const t = String(c||'').trim();
+        if(t) h += `<p style="font-weight:bold">${e2(t)}</p>`;
+      });
+      if(mrs.length){
+        h += `<table style="${TBL}">${tableHead(['Meter #','Location','Error','Test Condition','Reliability','Result','Action'])}<tbody>`;
+        mrs.forEach(row => { h += tableRow([row.meter, row.location, row.error, row.testCondition, row.reliability, row.result, row.action]); });
+        h += '</tbody></table>';
+      }
+    }
   }
+
+  // 5. Audit Objective Outcomes
   if(inc.outcomes !== false && has(r.auditOutcomes)){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">5. Audit Objective Outcomes</h2>';
-    h += '<table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr style="background:#232C63;color:#fff"><th style="padding:5pt 8pt;text-align:left">Objective</th><th style="padding:5pt 8pt;text-align:left">Finding</th><th style="padding:5pt 8pt;text-align:left">Status</th></tr></thead><tbody>';
-    (r.auditOutcomes||[]).forEach(row=>{ h+=`<tr><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.objective)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.finding)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb;font-weight:700">${e2(row.status)}</td></tr>`; });
+    h += `<h2 style="${H2}">5. Audit Objective Outcomes</h2>`;
+    if(String(r.outcomes_intro||'').trim()){
+      h += `<p style="font-style:italic;font-weight:bold">${e2(r.outcomes_intro)}</p>`;
+    }
+    h += `<table style="${TBL}">${tableHead(['Objective','Finding','Status'])}<tbody>`;
+    (r.auditOutcomes||[]).forEach(row => {
+      h += `<tr><td style="${TD}">${e2(row.objective)}</td><td style="${TD}">${e2(row.finding)}</td><td style="${TD};font-weight:700">${e2(row.status)}</td></tr>`;
+    });
     h += '</tbody></table>';
   }
-  if(inc.recommendations !== false && has(r.recommendations)){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">6. Recommendations</h2>';
-    h += '<table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr style="background:#232C63;color:#fff"><th style="padding:5pt 8pt;text-align:left">Ref</th><th style="padding:5pt 8pt;text-align:left">Recommendation</th><th style="padding:5pt 8pt;text-align:left">Owner</th><th style="padding:5pt 8pt;text-align:left">Timeframe</th></tr></thead><tbody>';
-    (r.recommendations||[]).forEach(row=>{ h+=`<tr><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.ref)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.rec)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.owner)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.timeframe)}</td></tr>`; });
-    h += '</tbody></table>';
+
+  // 6. Recommendations
+  if(inc.recommendations !== false){
+    const recs = Array.isArray(r.recommendations) ? r.recommendations : [];
+    if(recs.length || String(r.rec_intro||'').trim()){
+      h += `<h2 style="${H2}">6. Recommendations</h2>`;
+      if(String(r.rec_intro||'').trim()) h += paras(r.rec_intro);
+      const buckets = [
+        { label:'6.1 Immediate', tf:'immediate' },
+        { label:'6.2 Short Term (1–6 months)', tf:'short' },
+        { label:'6.3 Long Term (6+ months / capital programme)', tf:'long' }
+      ];
+      buckets.forEach(b => {
+        const rows = recs.filter(rc => (rc.timeframe||'') === b.tf);
+        if(!rows.length) return;
+        h += `<h3 style="${H3}">${e2(b.label)}</h3>`;
+        h += `<table style="${TBL}">${tableHead(['Ref','Recommendation','Owner'])}<tbody>`;
+        rows.forEach(rc => { h += tableRow([rc.ref, rc.rec, rc.owner]); });
+        h += '</tbody></table>';
+      });
+    }
   }
+
+  // 7. Conclusion
   if(inc.conclusion !== false && r.conclusion){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">7. Conclusion</h2>'+paras(r.conclusion);
+    h += `<h2 style="${H2}">7. Conclusion</h2>` + paras(r.conclusion);
   }
-  if(inc.appendices !== false && has(r.appendix_a, r.appendix_b, r.appendix_c, r.appendix_d)){
-    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">8. Appendices</h2>';
-    if(r.appendix_a) h += '<h3 style="color:#35679E;margin-top:8pt">Appendix A — Single Line Diagrams</h3>'+paras(r.appendix_a);
-    if(r.appendix_b) h += '<h3 style="color:#35679E;margin-top:8pt">Appendix B — Meter Test Records</h3>'+paras(r.appendix_b);
-    if(r.appendix_c) h += '<h3 style="color:#35679E;margin-top:8pt">Appendix C — Photographs</h3>'+paras(r.appendix_c);
-    if(r.appendix_d) h += '<h3 style="color:#35679E;margin-top:8pt">Appendix D — Tenancy Schedule / NMI Register</h3>'+paras(r.appendix_d);
+
+  // 8. Appendices
+  if(inc.appendices !== false){
+    h += `<h2 style="${H2}">8. Appendices</h2>`;
+    const apps = [
+      ['Appendix A — Single Line Diagrams', r.appendix_a],
+      ['Appendix B — Meter Test Records',   r.appendix_b],
+      ['Appendix C — Tenancy Schedule / NMI Register', r.appendix_c]
+    ];
+    apps.forEach(a => {
+      h += `<h3 style="${H3}">${e2(a[0])}</h3>`;
+      const txt = String(a[1]||'').trim();
+      if(txt) h += paras(a[1]);
+      else h += '<p><em>To be appended</em></p>';
+    });
   }
+
   return h;
 }
 
@@ -2822,7 +3190,14 @@ async function downloadReportPdf(){
   document.body.appendChild(el);
   const filename = String(r.site || project.name || 'audit_report').replace(/[^a-z0-9]/gi,'_') + '.pdf';
   try{
-    await html2pdf().set({margin:[10,10,10,10], filename, image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}, pagebreak:{mode:['css','legacy']}}).from(el).save();
+    await html2pdf().set({
+      margin:[10,10,10,10],
+      filename,
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2},
+      jsPDF:{unit:'mm', format:'a4', orientation:'portrait'},
+      pagebreak:{mode:['css','legacy']}
+    }).from(el).save();
   } finally {
     document.body.removeChild(el);
   }
