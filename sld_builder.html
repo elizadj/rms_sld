@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SLD Metering Schematic Builder</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Varela+Round&display=swap" rel="stylesheet">
@@ -49,6 +51,8 @@ body{font-family:'Varela Round','Segoe UI','Helvetica Neue',Arial,sans-serif;fon
 .dropdown{position:relative;display:inline-block}
 .dropdown-menu{display:none;position:absolute;top:100%;left:0;background:#232C63;border:1px solid rgba(255,255,255,.20);border-radius:4px;min-width:150px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:1000;margin-top:2px;overflow:hidden}
 .dropdown-menu.open{display:block}
+.rpt-inc-lbl{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--text-muted);font-weight:500;text-transform:none;letter-spacing:0;margin-left:12px;user-select:none}
+.rpt-inc-lbl input{margin:0;cursor:pointer}
 .dropdown-item{padding:8px 14px;color:#cdd3f0;font-size:12px;cursor:pointer;white-space:nowrap;font-family:inherit;line-height:1.4}
 .dropdown-item:hover{background:rgba(255,255,255,.10);color:#fff}
 .dropdown-item.disabled{color:#5a6087;cursor:not-allowed}
@@ -332,6 +336,13 @@ body.dev-mode .dropdown-item.dev-only{display:flex;align-items:center;justify-co
       <div id="rpt-ctls" style="display:none;flex:1;align-items:center;justify-content:flex-end;gap:8px">
         <span style="font-size:11px;color:var(--text-muted)">Electrical Network Audit Report</span>
         <button class="cbtn" onclick="printReport()">Print Report</button>
+        <div class="dropdown" style="position:relative">
+          <button class="cbtn" onclick="toggleDropdown('dd-rpt-download', event)">Download ▾</button>
+          <div class="dropdown-menu" id="dd-rpt-download" style="right:0;left:auto">
+            <div class="dropdown-item" onclick="downloadReportDocx();closeDropdowns()">Word (.docx)</div>
+            <div class="dropdown-item" onclick="downloadReportPdf();closeDropdowns()">PDF (.pdf)</div>
+          </div>
+        </div>
       </div>
     </div>
     <div id="canvas-scroll" class="empty">
@@ -2299,38 +2310,44 @@ function buildReportEditor(){
     r.appendix_a = r.appendix_a || '';  r.appendix_b = r.appendix_b || '';
     r.appendix_c = r.appendix_c || '';  r.appendix_d = r.appendix_d || '';
   }
+  r.includes = r.includes || {
+    cover: true, docCtrl: true, distribution: true, execSummary: true,
+    scope: true, methodology: true, networkObs: true,
+    meters: true, outcomes: true, recommendations: true,
+    conclusion: true, appendices: true
+  };
 
   document.getElementById('report-panel').innerHTML = `<div class="rpt-wrap">
   ${rptCoverPrev(r)}
-  ${rptCard('Cover Page', rptCoverFields(r))}
-  ${rptCard('Document Control', rptDocCtrl(r))}
-  ${rptCard('Distribution', `<div class="rpt-span rpt-f"><label>Distribution list (one per line)</label><textarea rows="3" oninput="_rptSave('distribution',this.value)">${esc(r.distribution)}</textarea></div>`)}
+  ${rptCard('Cover Page', rptCoverFields(r), 'cover')}
+  ${rptCard('Document Control', rptDocCtrl(r), 'docCtrl')}
+  ${rptCard('Distribution', `<div class="rpt-span rpt-f"><label>Distribution list (one per line)</label><textarea rows="3" oninput="_rptSave('distribution',this.value)">${esc(r.distribution)}</textarea></div>`, 'distribution')}
   ${rptCard('Executive Summary', `
     <div class="rpt-span rpt-f"><label>Summary</label><textarea rows="4" oninput="_rptSave('execSummary',this.value)">${esc(r.execSummary)}</textarea></div>
     <div class="rpt-span rpt-f"><label>Key Findings (one per line)</label><textarea rows="4" oninput="_rptSave('keyFindings',this.value)">${esc(r.keyFindings)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>Headline Recommendations (one per line)</label><textarea rows="3" oninput="_rptSave('headlineRecs',this.value)">${esc(r.headlineRecs)}</textarea></div>`)}
+    <div class="rpt-span rpt-f"><label>Headline Recommendations (one per line)</label><textarea rows="3" oninput="_rptSave('headlineRecs',this.value)">${esc(r.headlineRecs)}</textarea></div>`, 'execSummary')}
   ${rptCard('1. Scope &amp; Objectives', `
     <div class="rpt-span rpt-f"><label>1.1 Site</label><textarea rows="2" oninput="_rptSave('scope_site',this.value)">${esc(r.scope_site)}</textarea></div>
     <div class="rpt-span rpt-f"><label>1.2 Audit Objectives (one per line)</label><textarea rows="3" oninput="_rptSave('scope_obj',this.value)">${esc(r.scope_obj)}</textarea></div>
     <div class="rpt-span rpt-f"><label>1.3 In Scope (one per line)</label><textarea rows="3" oninput="_rptSave('scope_in',this.value)">${esc(r.scope_in)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>1.4 Out of Scope (one per line)</label><textarea rows="3" oninput="_rptSave('scope_out',this.value)">${esc(r.scope_out)}</textarea></div>`)}
+    <div class="rpt-span rpt-f"><label>1.4 Out of Scope (one per line)</label><textarea rows="3" oninput="_rptSave('scope_out',this.value)">${esc(r.scope_out)}</textarea></div>`, 'scope')}
   ${rptCard('2. Methodology', `
     <div class="rpt-span rpt-f"><label>2.1 Documentation Review</label><textarea rows="2" oninput="_rptSave('method_doc',this.value)">${esc(r.method_doc)}</textarea></div>
     <div class="rpt-span rpt-f"><label>2.2 Physical Inspection</label><textarea rows="2" oninput="_rptSave('method_insp',this.value)">${esc(r.method_insp)}</textarea></div>
     <div class="rpt-span rpt-f"><label>2.3 Meter Accuracy Testing</label><textarea rows="2" oninput="_rptSave('method_acc',this.value)">${esc(r.method_acc)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>2.4 Reference Standards (one per line)</label><textarea rows="3" oninput="_rptSave('method_std',this.value)">${esc(r.method_std)}</textarea></div>`)}
+    <div class="rpt-span rpt-f"><label>2.4 Reference Standards (one per line)</label><textarea rows="3" oninput="_rptSave('method_std',this.value)">${esc(r.method_std)}</textarea></div>`, 'methodology')}
   ${rptCard('3. Network Overview &amp; Findings', `
-    <div class="rpt-span rpt-f"><label>Observations — one paragraph per MSB (blank line between each)</label><textarea rows="8" oninput="_rptSave('networkObs',this.value)">${esc(r.networkObs)}</textarea></div>`)}
-  ${rptCard('4. Meter Testing Results', rptMeters(r))}
-  ${rptCard('5. Audit Objective Outcomes', rptOutcomes(r))}
-  ${rptCard('6. Recommendations', rptRecs(r))}
+    <div class="rpt-span rpt-f"><label>Observations — one paragraph per MSB (blank line between each)</label><textarea rows="8" oninput="_rptSave('networkObs',this.value)">${esc(r.networkObs)}</textarea></div>`, 'networkObs')}
+  ${rptCard('4. Meter Testing Results', rptMeters(r), 'meters')}
+  ${rptCard('5. Audit Objective Outcomes', rptOutcomes(r), 'outcomes')}
+  ${rptCard('6. Recommendations', rptRecs(r), 'recommendations')}
   ${rptCard('7. Conclusion', `
-    <div class="rpt-span rpt-f"><label>Conclusion</label><textarea rows="5" oninput="_rptSave('conclusion',this.value)">${esc(r.conclusion)}</textarea></div>`)}
+    <div class="rpt-span rpt-f"><label>Conclusion</label><textarea rows="5" oninput="_rptSave('conclusion',this.value)">${esc(r.conclusion)}</textarea></div>`, 'conclusion')}
   ${rptCard('8. Appendices', `
     <div class="rpt-span rpt-f"><label>Appendix A — Single Line Diagrams</label><textarea rows="2" oninput="_rptSave('appendix_a',this.value)">${esc(r.appendix_a)}</textarea></div>
     <div class="rpt-span rpt-f"><label>Appendix B — Meter Test Records</label><textarea rows="2" oninput="_rptSave('appendix_b',this.value)">${esc(r.appendix_b)}</textarea></div>
     <div class="rpt-span rpt-f"><label>Appendix C — Photographs</label><textarea rows="2" oninput="_rptSave('appendix_c',this.value)">${esc(r.appendix_c)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>Appendix D — Tenancy Schedule / NMI Register</label><textarea rows="2" oninput="_rptSave('appendix_d',this.value)">${esc(r.appendix_d)}</textarea></div>`)}
+    <div class="rpt-span rpt-f"><label>Appendix D — Tenancy Schedule / NMI Register</label><textarea rows="2" oninput="_rptSave('appendix_d',this.value)">${esc(r.appendix_d)}</textarea></div>`, 'appendices')}
 </div>`;
 }
 
@@ -2351,11 +2368,20 @@ function rptCoverPrev(r){
   </div>`;
 }
 
-function rptCard(title, body){
+function rptCard(title, body, sectionKey){
+  const inc = sectionKey ? (project.report && project.report.includes && project.report.includes[sectionKey] !== false) : true;
+  const incChk = sectionKey ? `<label class="rpt-inc-lbl" onclick="event.stopPropagation()"><input type="checkbox" ${inc?'checked':''} onchange="_toggleInclude('${sectionKey}', this.checked)"> Include in download</label>` : '';
   return `<div class="rpt-sec">
-    <div class="rpt-sec-h" onclick="const b=this.nextElementSibling;b.style.display=b.style.display==='none'?'':'none'">${title}<span style="opacity:.5;font-size:12px">▾</span></div>
+    <div class="rpt-sec-h" onclick="const b=this.nextElementSibling;b.style.display=b.style.display==='none'?'':'none'"><span>${title}</span>${incChk}<span style="opacity:.5;font-size:12px;margin-left:auto">▾</span></div>
     <div class="rpt-sec-b"><div class="rpt-grid">${body}</div></div>
   </div>`;
+}
+
+function _toggleInclude(key, on){
+  project.report = project.report || {};
+  project.report.includes = project.report.includes || {};
+  project.report.includes[key] = !!on;
+  autoSave();
 }
 
 function rptCoverFields(r){
@@ -2548,6 +2574,258 @@ tbody tr:nth-child(even) td{background:#f9fafb}
   const w=window.open('','_blank');
   if(!w){alert('Pop-up blocked — allow pop-ups for this page.');return;}
   w.document.write(h); w.document.close(); w.focus();
+}
+
+
+async function downloadReportDocx(){
+  if(typeof docx === 'undefined'){
+    alert('Word library failed to load. Check your internet connection and try again.');
+    return;
+  }
+  const r = project.report || {};
+  const inc = r.includes || {};
+  const D = docx;
+  const children = [];
+  const para = t => new D.Paragraph(String(t==null?'':t));
+  const h1 = t => new D.Paragraph({text:t, heading:D.HeadingLevel.HEADING_1});
+  const h2 = t => new D.Paragraph({text:t, heading:D.HeadingLevel.HEADING_2});
+  const bul = lines => String(lines||'').split(/\n/).filter(l=>l.trim()).map(l => new D.Paragraph({text:l.replace(/^[-•]\s*/,''), bullet:{level:0}}));
+  const paras = s => String(s||'').split(/\n\n+/).filter(l=>l.trim()).map(p => new D.Paragraph(p));
+
+  // Cover
+  if(inc.cover !== false){
+    children.push(new D.Paragraph({text:'ELECTRICAL NETWORK AUDIT REPORT', heading:D.HeadingLevel.TITLE, alignment:D.AlignmentType.CENTER}));
+    if(r.site) children.push(new D.Paragraph({text:r.site, heading:D.HeadingLevel.HEADING_1, alignment:D.AlignmentType.CENTER}));
+    children.push(new D.Paragraph({text:''}));
+    const coverRows = [];
+    if(r.prepFor) coverRows.push(['Prepared for', r.prepFor]);
+    if(r.by)      coverRows.push(['Prepared by', r.by]);
+    if(r.date)    coverRows.push(['Date', r.date]);
+    if(r.ref)     coverRows.push(['Reference', r.ref]);
+    if(r.rev)     coverRows.push(['Revision', r.rev]);
+    if(coverRows.length){
+      children.push(new D.Table({
+        rows: coverRows.map(pair => new D.TableRow({
+          children:[
+            new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:pair[0], bold:true})]})], width:{size:30, type:D.WidthType.PERCENTAGE}}),
+            new D.TableCell({children:[new D.Paragraph(String(pair[1]||''))], width:{size:70, type:D.WidthType.PERCENTAGE}})
+          ]
+        }))
+      }));
+    }
+  }
+  // Document Control
+  if(inc.docCtrl !== false && Array.isArray(r.revisions) && r.revisions.length){
+    children.push(h1('Document Control'));
+    const header = ['Rev','Date','Description','By','Approved'];
+    children.push(new D.Table({
+      rows: [
+        new D.TableRow({children: header.map(h => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:h, bold:true})]})]}))}),
+        ...r.revisions.map(rv => new D.TableRow({
+          children: ['rev','date','desc','by','approved'].map(k => new D.TableCell({children:[new D.Paragraph(String(rv[k]||''))]}))
+        }))
+      ]
+    }));
+  }
+  // Distribution
+  if(inc.distribution !== false && r.distribution){
+    children.push(h1('Distribution'));
+    bul(r.distribution).forEach(p => children.push(p));
+  }
+  // Executive Summary
+  if(inc.execSummary !== false && (r.execSummary || r.keyFindings || r.headlineRecs)){
+    children.push(h1('Executive Summary'));
+    if(r.execSummary) paras(r.execSummary).forEach(p => children.push(p));
+    if(r.keyFindings){ children.push(h2('Key Findings')); bul(r.keyFindings).forEach(p => children.push(p)); }
+    if(r.headlineRecs){ children.push(h2('Headline Recommendations')); bul(r.headlineRecs).forEach(p => children.push(p)); }
+  }
+  // Scope
+  if(inc.scope !== false && (r.scope_site || r.scope_obj || r.scope_in || r.scope_out)){
+    children.push(h1('1. Scope and Objectives'));
+    if(r.scope_site){ children.push(h2('1.1 Site')); paras(r.scope_site).forEach(p=>children.push(p)); }
+    if(r.scope_obj){  children.push(h2('1.2 Audit Objectives')); bul(r.scope_obj).forEach(p=>children.push(p)); }
+    if(r.scope_in){   children.push(h2('1.3 In Scope')); bul(r.scope_in).forEach(p=>children.push(p)); }
+    if(r.scope_out){  children.push(h2('1.4 Out of Scope')); bul(r.scope_out).forEach(p=>children.push(p)); }
+  }
+  // Methodology
+  if(inc.methodology !== false && (r.method_doc || r.method_insp || r.method_acc || r.method_std)){
+    children.push(h1('2. Methodology'));
+    if(r.method_doc){  children.push(h2('2.1 Documentation Review')); paras(r.method_doc).forEach(p=>children.push(p)); }
+    if(r.method_insp){ children.push(h2('2.2 Physical Inspection')); paras(r.method_insp).forEach(p=>children.push(p)); }
+    if(r.method_acc){  children.push(h2('2.3 Meter Accuracy Testing')); paras(r.method_acc).forEach(p=>children.push(p)); }
+    if(r.method_std){  children.push(h2('2.4 Reference Standards')); bul(r.method_std).forEach(p=>children.push(p)); }
+  }
+  // Network Observations
+  if(inc.networkObs !== false && r.networkObs){
+    children.push(h1('3. Network Overview and Findings'));
+    paras(r.networkObs).forEach(p => children.push(p));
+  }
+  // Meters
+  if(inc.meters !== false && Array.isArray(r.meterResults) && r.meterResults.length){
+    children.push(h1('4. Meter Testing Results'));
+    const header = ['Meter #','Location','Error','Result','Action'];
+    children.push(new D.Table({
+      rows: [
+        new D.TableRow({children: header.map(h => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:h, bold:true})]})]}))}),
+        ...r.meterResults.map(m => new D.TableRow({
+          children: ['meter','location','error','result','action'].map(k => new D.TableCell({children:[new D.Paragraph(String(m[k]||''))]}))
+        }))
+      ]
+    }));
+  }
+  // Outcomes
+  if(inc.outcomes !== false && Array.isArray(r.auditOutcomes) && r.auditOutcomes.length){
+    children.push(h1('5. Audit Objective Outcomes'));
+    const header = ['Objective','Finding','Status'];
+    children.push(new D.Table({
+      rows: [
+        new D.TableRow({children: header.map(h => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:h, bold:true})]})]}))}),
+        ...r.auditOutcomes.map(o => new D.TableRow({
+          children: ['objective','finding','status'].map(k => new D.TableCell({children:[new D.Paragraph(String(o[k]||''))]}))
+        }))
+      ]
+    }));
+  }
+  // Recommendations
+  if(inc.recommendations !== false && Array.isArray(r.recommendations) && r.recommendations.length){
+    children.push(h1('6. Recommendations'));
+    const header = ['Ref','Recommendation','Owner','Timeframe'];
+    children.push(new D.Table({
+      rows: [
+        new D.TableRow({children: header.map(h => new D.TableCell({children:[new D.Paragraph({children:[new D.TextRun({text:h, bold:true})]})]}))}),
+        ...r.recommendations.map(rc => new D.TableRow({
+          children: ['ref','rec','owner','timeframe'].map(k => new D.TableCell({children:[new D.Paragraph(String(rc[k]||''))]}))
+        }))
+      ]
+    }));
+  }
+  // Conclusion
+  if(inc.conclusion !== false && r.conclusion){
+    children.push(h1('7. Conclusion'));
+    paras(r.conclusion).forEach(p => children.push(p));
+  }
+  // Appendices
+  if(inc.appendices !== false){
+    const apps = [
+      ['Appendix A — Single Line Diagrams', r.appendix_a],
+      ['Appendix B — Meter Test Records',   r.appendix_b],
+      ['Appendix C — Photographs',          r.appendix_c],
+      ['Appendix D — Tenancy Schedule / NMI Register', r.appendix_d]
+    ];
+    if(apps.some(a => a[1])){
+      children.push(h1('8. Appendices'));
+      apps.forEach(a => { if(a[1]){ children.push(h2(a[0])); paras(a[1]).forEach(p=>children.push(p)); } });
+    }
+  }
+
+  const doc = new D.Document({sections:[{properties:{}, children}]});
+  const blob = await D.Packer.toBlob(doc);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = String(r.site || project.name || 'audit_report').replace(/[^a-z0-9]/gi,'_') + '.docx';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function _buildReportHtmlForExport(r, inc){
+  const e2 = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const bullets = s => s ? '<ul>'+String(s).split('\n').filter(l=>l.trim()).map(l=>`<li>${e2(l.replace(/^[-•]\s*/,''))}</li>`).join('')+'</ul>' : '';
+  const paras   = s => s ? String(s).split(/\n\n+/).filter(l=>l.trim()).map(l=>`<p>${e2(l)}</p>`).join('') : '';
+  const has = (...ff) => ff.some(f=>Array.isArray(f)?f.length>0:String(f||'').trim());
+  let h = '';
+  if(inc.cover !== false){
+    h += `<div style="text-align:center;margin-bottom:18pt">
+      <div style="font-size:9pt;letter-spacing:2pt;text-transform:uppercase;color:#6b7280">Electrical Network Audit Report</div>
+      <h1 style="font-size:22pt;color:#232C63;margin:8pt 0">${e2(r.site||'Site Name')}</h1>
+      <div style="font-size:10pt;color:#374151;line-height:1.8">
+        ${r.prepFor?`<div><b>Prepared for</b> ${e2(r.prepFor)}</div>`:''}
+        ${r.by?`<div><b>Prepared by</b> ${e2(r.by)}</div>`:''}
+        ${r.date?`<div><b>Date</b> ${e2(r.date)}</div>`:''}
+        ${r.ref?`<div><b>Reference</b> ${e2(r.ref)}</div>`:''}
+        ${r.rev?`<div><b>Revision</b> ${e2(r.rev)}</div>`:''}
+      </div>
+    </div>`;
+  }
+  if(inc.docCtrl !== false && has(r.revisions)){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">Document Control</h2>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:9pt;margin-top:6pt"><thead><tr style="background:#232C63;color:#fff"><th style="padding:5pt 8pt;text-align:left">Revision</th><th style="padding:5pt 8pt;text-align:left">Date</th><th style="padding:5pt 8pt;text-align:left">Description</th><th style="padding:5pt 8pt;text-align:left">Prepared by</th><th style="padding:5pt 8pt;text-align:left">Approved</th></tr></thead><tbody>';
+    (r.revisions||[]).forEach(row=>{ h+=`<tr><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.rev)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.date)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.desc)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.by)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.approved)}</td></tr>`; });
+    h += '</tbody></table>';
+  }
+  if(inc.distribution !== false && r.distribution){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">Distribution</h2>'+bullets(r.distribution);
+  }
+  if(inc.execSummary !== false && has(r.execSummary, r.keyFindings, r.headlineRecs)){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">Executive Summary</h2>';
+    if(r.execSummary)  h += paras(r.execSummary);
+    if(r.keyFindings)  h += '<h3 style="color:#35679E;margin-top:8pt">Key Findings</h3>'+bullets(r.keyFindings);
+    if(r.headlineRecs) h += '<h3 style="color:#35679E;margin-top:8pt">Headline Recommendations</h3>'+bullets(r.headlineRecs);
+  }
+  if(inc.scope !== false && has(r.scope_site, r.scope_obj, r.scope_in, r.scope_out)){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">1. Scope &amp; Objectives</h2>';
+    if(r.scope_site) h += '<h3 style="color:#35679E;margin-top:8pt">1.1 Site</h3>'+paras(r.scope_site);
+    if(r.scope_obj)  h += '<h3 style="color:#35679E;margin-top:8pt">1.2 Audit Objectives</h3>'+bullets(r.scope_obj);
+    if(r.scope_in)   h += '<h3 style="color:#35679E;margin-top:8pt">1.3 In Scope</h3>'+bullets(r.scope_in);
+    if(r.scope_out)  h += '<h3 style="color:#35679E;margin-top:8pt">1.4 Out of Scope</h3>'+bullets(r.scope_out);
+  }
+  if(inc.methodology !== false && has(r.method_doc, r.method_insp, r.method_acc, r.method_std)){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">2. Methodology</h2>';
+    if(r.method_doc)  h += '<h3 style="color:#35679E;margin-top:8pt">2.1 Documentation Review</h3>'+paras(r.method_doc);
+    if(r.method_insp) h += '<h3 style="color:#35679E;margin-top:8pt">2.2 Physical Inspection</h3>'+paras(r.method_insp);
+    if(r.method_acc)  h += '<h3 style="color:#35679E;margin-top:8pt">2.3 Meter Accuracy Testing</h3>'+paras(r.method_acc);
+    if(r.method_std)  h += '<h3 style="color:#35679E;margin-top:8pt">2.4 Reference Standards</h3>'+bullets(r.method_std);
+  }
+  if(inc.networkObs !== false && r.networkObs){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">3. Network Overview &amp; Findings</h2>'+paras(r.networkObs);
+  }
+  if(inc.meters !== false && has(r.meterResults)){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">4. Meter Testing Results</h2>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr style="background:#232C63;color:#fff"><th style="padding:5pt 8pt;text-align:left">Meter #</th><th style="padding:5pt 8pt;text-align:left">Location</th><th style="padding:5pt 8pt;text-align:left">Error</th><th style="padding:5pt 8pt;text-align:left">Result</th><th style="padding:5pt 8pt;text-align:left">Action</th></tr></thead><tbody>';
+    (r.meterResults||[]).forEach(row=>{ h+=`<tr><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.meter)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.location)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.error)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.result)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.action)}</td></tr>`; });
+    h += '</tbody></table>';
+  }
+  if(inc.outcomes !== false && has(r.auditOutcomes)){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">5. Audit Objective Outcomes</h2>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr style="background:#232C63;color:#fff"><th style="padding:5pt 8pt;text-align:left">Objective</th><th style="padding:5pt 8pt;text-align:left">Finding</th><th style="padding:5pt 8pt;text-align:left">Status</th></tr></thead><tbody>';
+    (r.auditOutcomes||[]).forEach(row=>{ h+=`<tr><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.objective)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.finding)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb;font-weight:700">${e2(row.status)}</td></tr>`; });
+    h += '</tbody></table>';
+  }
+  if(inc.recommendations !== false && has(r.recommendations)){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">6. Recommendations</h2>';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:9pt"><thead><tr style="background:#232C63;color:#fff"><th style="padding:5pt 8pt;text-align:left">Ref</th><th style="padding:5pt 8pt;text-align:left">Recommendation</th><th style="padding:5pt 8pt;text-align:left">Owner</th><th style="padding:5pt 8pt;text-align:left">Timeframe</th></tr></thead><tbody>';
+    (r.recommendations||[]).forEach(row=>{ h+=`<tr><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.ref)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.rec)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.owner)}</td><td style="padding:4pt 8pt;border-bottom:1px solid #e5e7eb">${e2(row.timeframe)}</td></tr>`; });
+    h += '</tbody></table>';
+  }
+  if(inc.conclusion !== false && r.conclusion){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">7. Conclusion</h2>'+paras(r.conclusion);
+  }
+  if(inc.appendices !== false && has(r.appendix_a, r.appendix_b, r.appendix_c, r.appendix_d)){
+    h += '<h2 style="color:#232C63;border-bottom:2px solid #CC3366;padding-bottom:4pt;margin-top:14pt">8. Appendices</h2>';
+    if(r.appendix_a) h += '<h3 style="color:#35679E;margin-top:8pt">Appendix A — Single Line Diagrams</h3>'+paras(r.appendix_a);
+    if(r.appendix_b) h += '<h3 style="color:#35679E;margin-top:8pt">Appendix B — Meter Test Records</h3>'+paras(r.appendix_b);
+    if(r.appendix_c) h += '<h3 style="color:#35679E;margin-top:8pt">Appendix C — Photographs</h3>'+paras(r.appendix_c);
+    if(r.appendix_d) h += '<h3 style="color:#35679E;margin-top:8pt">Appendix D — Tenancy Schedule / NMI Register</h3>'+paras(r.appendix_d);
+  }
+  return h;
+}
+
+async function downloadReportPdf(){
+  if(typeof html2pdf === 'undefined'){
+    alert('PDF library failed to load. Check your internet connection and try again.');
+    return;
+  }
+  const r = project.report || {};
+  const inc = r.includes || {};
+  const el = document.createElement('div');
+  el.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#fff;font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#333;padding:20mm;line-height:1.5';
+  el.innerHTML = _buildReportHtmlForExport(r, inc);
+  document.body.appendChild(el);
+  const filename = String(r.site || project.name || 'audit_report').replace(/[^a-z0-9]/gi,'_') + '.pdf';
+  try{
+    await html2pdf().set({margin:[10,10,10,10], filename, image:{type:'jpeg',quality:0.95}, html2canvas:{scale:2}, jsPDF:{unit:'mm', format:'a4', orientation:'portrait'}, pagebreak:{mode:['css','legacy']}}).from(el).save();
+  } finally {
+    document.body.removeChild(el);
+  }
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
