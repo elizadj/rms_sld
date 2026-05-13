@@ -2331,7 +2331,8 @@ function buildReportEditor(){
     r.appendix_c = r.appendix_c || '';  r.appendix_d = r.appendix_d || '';
     // --- Audit Report restructure (Call 1): new fields with back-compat ---
     r.coverTitle1 = r.coverTitle1 || 'TECHNICAL AUDIT REPORT';
-    r.coverTitle2 = r.coverTitle2 || ('EMBEDDED NETWORK | ' + (r.site || '').toUpperCase());
+    // Leave coverTitle2 empty so the placeholder tracks the current SLD name; user can override.
+    r.coverTitle2 = r.coverTitle2 || '';
     r.coverTechnician = r.coverTechnician || r.by || '';
     r.coverAuditDate = r.coverAuditDate || r.date || '';
     r.msbSections = Array.isArray(r.msbSections) ? r.msbSections : [];
@@ -2354,6 +2355,23 @@ function buildReportEditor(){
     meters: true, outcomes: true, recommendations: true,
     conclusion: true, appendices: true
   };
+  // Sub-section toggles (default all true)
+  const subKeys = ['scope_site','scope_obj','scope_in','scope_out',
+                   'method_doc','method_insp','method_acc','method_std',
+                   'rec_immediate','rec_short','rec_long'];
+  subKeys.forEach(k => { if(!(k in r.includes)) r.includes[k] = true; });
+  // Migrate legacy appendix_a/b/c/d to new appendices array on first encounter
+  if(!Array.isArray(r.appendices)){
+    const legacy = [
+      {letter:'A', title:'Single Line Diagrams', content: r.appendix_a || ''},
+      {letter:'B', title:'Meter Test Records', content: r.appendix_b || ''},
+      {letter:'C', title:'Tenancy Schedule / NMI Register', content: r.appendix_c || ''},
+    ];
+    if(r.appendix_d && r.appendix_d.trim() && r.appendix_d.trim() !== (r.appendix_c||'').trim()){
+      legacy.push({letter:'D', title:'Additional', content: r.appendix_d});
+    }
+    r.appendices = legacy.map(a => ({...a, included: true}));
+  }
 
   document.getElementById('report-panel').innerHTML = `<div class="rpt-wrap">
   ${rptCoverPrev(r)}
@@ -2365,15 +2383,15 @@ function buildReportEditor(){
     <div class="rpt-span rpt-f"><label>Key Findings (one per line)</label><textarea rows="4" oninput="_rptSave('keyFindings',this.value)">${esc(r.keyFindings)}</textarea></div>
     <div class="rpt-span rpt-f"><label>Headline Recommendations (one per line)</label><textarea rows="3" oninput="_rptSave('headlineRecs',this.value)">${esc(r.headlineRecs)}</textarea></div>`, 'execSummary')}
   ${rptCard('1. Scope &amp; Objectives', `
-    <div class="rpt-span rpt-f"><label>1.1 Site</label><textarea rows="2" oninput="_rptSave('scope_site',this.value)">${esc(r.scope_site)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>1.2 Audit Objectives (one per line)</label><textarea rows="3" oninput="_rptSave('scope_obj',this.value)">${esc(r.scope_obj)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>1.3 In Scope (one per line)</label><textarea rows="3" oninput="_rptSave('scope_in',this.value)">${esc(r.scope_in)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>1.4 Out of Scope (one per line)</label><textarea rows="3" oninput="_rptSave('scope_out',this.value)">${esc(r.scope_out)}</textarea></div>`, 'scope')}
+    <div class="rpt-span">${_subHeading('1.1 Site', 'scope_site')}<textarea rows="2" style="width:100%" oninput="_rptSave('scope_site',this.value)">${esc(r.scope_site)}</textarea></div>
+    <div class="rpt-span">${_subHeading('1.2 Audit Objectives (one per line)', 'scope_obj')}<textarea rows="3" style="width:100%" oninput="_rptSave('scope_obj',this.value)">${esc(r.scope_obj)}</textarea></div>
+    <div class="rpt-span">${_subHeading('1.3 In Scope (one per line)', 'scope_in')}<textarea rows="3" style="width:100%" oninput="_rptSave('scope_in',this.value)">${esc(r.scope_in)}</textarea></div>
+    <div class="rpt-span">${_subHeading('1.4 Out of Scope (one per line)', 'scope_out')}<textarea rows="3" style="width:100%" oninput="_rptSave('scope_out',this.value)">${esc(r.scope_out)}</textarea></div>`, 'scope')}
   ${rptCard('2. Methodology', `
-    <div class="rpt-span rpt-f"><label>2.1 Documentation Review</label><textarea rows="2" oninput="_rptSave('method_doc',this.value)">${esc(r.method_doc)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>2.2 Physical Inspection</label><textarea rows="2" oninput="_rptSave('method_insp',this.value)">${esc(r.method_insp)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>2.3 Meter Accuracy Testing</label><textarea rows="2" oninput="_rptSave('method_acc',this.value)">${esc(r.method_acc)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>2.4 Reference Standards (one per line)</label><textarea rows="3" oninput="_rptSave('method_std',this.value)">${esc(r.method_std)}</textarea></div>`, 'methodology')}
+    <div class="rpt-span">${_subHeading('2.1 Documentation Review', 'method_doc')}<textarea rows="2" style="width:100%" oninput="_rptSave('method_doc',this.value)">${esc(r.method_doc)}</textarea></div>
+    <div class="rpt-span">${_subHeading('2.2 Physical Inspection', 'method_insp')}<textarea rows="2" style="width:100%" oninput="_rptSave('method_insp',this.value)">${esc(r.method_insp)}</textarea></div>
+    <div class="rpt-span">${_subHeading('2.3 Meter Accuracy Testing', 'method_acc')}<textarea rows="2" style="width:100%" oninput="_rptSave('method_acc',this.value)">${esc(r.method_acc)}</textarea></div>
+    <div class="rpt-span">${_subHeading('2.4 Reference Standards (one per line)', 'method_std')}<textarea rows="3" style="width:100%" oninput="_rptSave('method_std',this.value)">${esc(r.method_std)}</textarea></div>`, 'methodology')}
   ${rptCard('3. Network Overview &amp; Findings', `
     <div class="rpt-span rpt-f"><label>Observations intro — free-text overview (one paragraph per MSB)</label><textarea rows="6" oninput="_rptSave('networkObs',this.value)">${esc(r.networkObs)}</textarea></div>
     ${rptMsbSections(r)}
@@ -2383,23 +2401,34 @@ function buildReportEditor(){
   ${rptCard('6. Recommendations', rptRecs(r), 'recommendations')}
   ${rptCard('7. Conclusion', `
     <div class="rpt-span rpt-f"><label>Conclusion</label><textarea rows="5" oninput="_rptSave('conclusion',this.value)">${esc(r.conclusion)}</textarea></div>`, 'conclusion')}
-  ${rptCard('8. Appendices', `
-    <div class="rpt-span rpt-f"><label>Appendix A — Single Line Diagrams</label><textarea rows="2" oninput="_rptSave('appendix_a',this.value)">${esc(r.appendix_a)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>Appendix B — Meter Test Records</label><textarea rows="2" oninput="_rptSave('appendix_b',this.value)">${esc(r.appendix_b)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>Appendix C — Tenancy Schedule / NMI Register</label><textarea rows="2" oninput="_rptSave('appendix_c',this.value)">${esc(r.appendix_c)}</textarea></div>
-    <div class="rpt-span rpt-f"><label>Appendix D — Tenancy Schedule / NMI Register</label><textarea rows="2" oninput="_rptSave('appendix_d',this.value)">${esc(r.appendix_d)}</textarea></div>`, 'appendices')}
+  ${rptCard('8. Appendices', rptAppendicesBody(r), 'appendices')}
 </div>`;
 }
 
+// Returns the currently-selected SLD's name, falling back to r.site, then to project.name.
+function _reportTitleName(r){
+  const sld = (typeof selectedSLDId !== 'undefined' && selectedSLDId)
+    ? (project.slds || []).find(s => s.id === selectedSLDId)
+    : null;
+  return (sld && sld.name) || (r && r.site) || project.name || '';
+}
+
 function rptCoverPrev(r){
-  const site = r.site || 'Site Name';
+  const site = _reportTitleName(r) || 'Site Name';
   const prepFor = r.prepFor ? `<b>Prepared for</b>&ensp;${esc(r.prepFor)}<br>`:'';
   const by      = r.by      ? `<b>Prepared by</b>&ensp;${esc(r.by)}<br>`     :'';
   const dt      = r.date    ? `<b>Date</b>&ensp;${esc(r.date)}<br>`           :'';
   const ref     = r.ref     ? `<b>Ref</b>&ensp;${esc(r.ref)}`                :'';
+  const logoCfg = project.settings && project.settings.logo;
+  const logoHtml = (logoCfg && logoCfg.data)
+    ? (logoCfg.type === 'svg'
+        ? `<div style="position:absolute;top:14px;right:14px;z-index:2;background:#ffffff;border-radius:6px;padding:6px 8px;display:inline-flex;align-items:center;justify-content:center;max-width:150px;max-height:72px;overflow:hidden">${logoCfg.data}</div>`
+        : `<img src="${String(logoCfg.data).replace(/"/g,'&quot;')}" style="position:absolute;top:14px;right:14px;z-index:2;background:#ffffff;border-radius:6px;padding:6px 8px;max-width:150px;max-height:72px;object-fit:contain"/>`)
+    : '';
   return `<div class="rpt-cover" id="rpt-cover-preview">
     <div class="rpt-cover-art"></div>
     <div class="rpt-cover-bolt"><svg width="52" height="90" viewBox="0 0 10 20"><polygon points="4,0 10,0 6,9 10,9 0,20 4,11 0,11" fill="#CC3366"/></svg></div>
+    ${logoHtml}
     <div class="rpt-cover-z">
       <div class="rpt-cover-eye">Electrical Network Audit Report</div>
       <div class="rpt-cover-h" id="rpc-h">${esc(site)}</div>
@@ -2427,7 +2456,7 @@ function _toggleInclude(key, on){
 function rptCoverFields(r){
   return `
     <div class="rpt-span rpt-f"><label>Cover Title 1 (top line)</label><input value="${esc(r.coverTitle1||'TECHNICAL AUDIT REPORT')}" oninput="_rptSave('coverTitle1',this.value)"></div>
-    <div class="rpt-span rpt-f"><label>Cover Title 2 (second line — typically 'EMBEDDED NETWORK | SITE NAME')</label><input value="${esc(r.coverTitle2||'')}" oninput="_rptSave('coverTitle2',this.value)"></div>
+    <div class="rpt-span rpt-f"><label>Cover Title 2 (second line — typically 'EMBEDDED NETWORK | SITE NAME')</label><input value="${esc(r.coverTitle2||'')}" placeholder="EMBEDDED NETWORK | ${esc((_reportTitleName(r) || '').toUpperCase())}" oninput="_rptSave('coverTitle2',this.value)"></div>
     <div class="rpt-span rpt-f"><label>Cover details</label>
       <table class="rpt-t" style="margin-top:2px"><thead><tr><th style="width:38%">Field</th><th>Value</th></tr></thead><tbody>
         <tr><td><b>Prepared for</b></td><td><input value="${esc(r.prepFor)}" oninput="_rptSave('prepFor',this.value)"></td></tr>
@@ -2436,8 +2465,8 @@ function rptCoverFields(r){
         <tr><td><b>Audit Date</b></td><td><input type="date" value="${esc(r.coverAuditDate||'')}" oninput="_rptSave('coverAuditDate',this.value)"></td></tr>
       </tbody></table>
     </div>
-    <div class="rpt-span rpt-f" style="margin-top:6px;padding-top:8px;border-top:1px dashed #e5e7eb"><label style="opacity:.75">Legacy / back-compat fields (still used by preview &amp; some exports)</label></div>
-    <div class="rpt-span rpt-f"><label>Report Title / Site Name (legacy)</label><input value="${esc(r.site)}" oninput="_rptSave('site',this.value);const h=document.getElementById('rpc-h');if(h)h.textContent=this.value||'Site Name'"></div>
+    <div class="rpt-span rpt-f" style="margin-top:6px;padding-top:8px;border-top:1px dashed #e5e7eb"><label style="opacity:.75">Legacy fields (fallback — ignored if current SLD is selected)</label></div>
+    <div class="rpt-span rpt-f"><label>Site Name (legacy — auto-derived from current SLD if blank)</label><input value="${esc(r.site)}" oninput="_rptSave('site',this.value);const h=document.getElementById('rpc-h');if(h)h.textContent=this.value||'Site Name'"></div>
     <div class="rpt-f"><label>Report Reference</label><input value="${esc(r.ref)}" oninput="_rptSave('ref',this.value)"></div>
     <div class="rpt-f"><label>Revision</label><input value="${esc(r.rev||'Draft A')}" oninput="_rptSave('rev',this.value)"></div>
     <div class="rpt-f"><label>Date (legacy)</label><input type="date" value="${esc(r.date)}" oninput="_rptSave('date',this.value)"></div>`;
@@ -2508,11 +2537,30 @@ function rptRecs(r){
   </tr>`).join('');
   return `
     <div class="rpt-span rpt-f"><label>Recommendations intro</label><textarea rows="3" oninput="_rptSave('rec_intro',this.value)">${esc(r.rec_intro||'')}</textarea></div>
+    <div class="rpt-span">${_subHeading('6.1 Immediate', 'rec_immediate')}</div>
+    <div class="rpt-span">${_subHeading('6.2 Short Term', 'rec_short')}</div>
+    <div class="rpt-span">${_subHeading('6.3 Long Term', 'rec_long')}</div>
     <div class="rpt-tbl-wrap">
     <table class="rpt-t"><thead><tr><th>Ref</th><th>Recommendation</th><th>Owner</th><th>Timeframe</th><th></th></tr></thead>
     <tbody>${rows}</tbody></table>
     <span class="rpt-add-row" onclick="rptRowAdd('recommendations',{ref:'',rec:'',owner:'',timeframe:'immediate'})">+ Add recommendation</span>
   </div>`;
+}
+
+function rptAppendicesBody(r){
+  const list = Array.isArray(r.appendices) ? r.appendices : [];
+  const items = list.map((a, i) => `
+    <div style="border:1px solid #e5e7eb;background:#fafafa;padding:10px;border-radius:6px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-weight:bold;color:var(--accent)">Appendix ${esc(a.letter||'')}</span>
+        <input type="text" value="${esc(a.title||'')}" style="flex:1" placeholder="Title (e.g. Single Line Diagrams)" oninput="rptAppendixSetField(${i}, 'title', this.value)">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:var(--text-muted);font-weight:500"><input type="checkbox" ${a.included!==false?'checked':''} onchange="rptAppendixToggle(${i}, this.checked)"> Include in download</label>
+        <button class="rpt-del" onclick="rptAppendixDel(${i})" title="Remove appendix" style="background:none;border:none;cursor:pointer">×</button>
+      </div>
+      <textarea rows="3" style="width:100%" placeholder="Content (or 'To be appended')" oninput="rptAppendixSetField(${i}, 'content', this.value)">${esc(a.content || '')}</textarea>
+    </div>
+  `).join('');
+  return `<div class="rpt-span">${items}<span class="rpt-add-row" onclick="rptAppendixAdd()">+ Add Appendix</span></div>`;
 }
 
 function _rptNestedSave(pathStr, val){
@@ -2625,6 +2673,37 @@ function rptSubBoards(r){
 
 function rptRowSave(key, idx, field, val){
   const arr=(project.report||{})[key]; if(arr&&arr[idx]) arr[idx][field]=val; autoSave();
+}
+function rptAppendixSetField(idx, field, val){
+  if(!project.report || !Array.isArray(project.report.appendices) || !project.report.appendices[idx]) return;
+  project.report.appendices[idx][field] = val;
+  autoSave();
+}
+function rptAppendixToggle(idx, on){
+  if(!project.report || !Array.isArray(project.report.appendices) || !project.report.appendices[idx]) return;
+  project.report.appendices[idx].included = !!on;
+  autoSave();
+}
+function rptAppendixAdd(){
+  const r = project.report || (project.report = {});
+  if(!Array.isArray(r.appendices)) r.appendices = [];
+  const next = String.fromCharCode(65 + r.appendices.length);
+  r.appendices.push({letter: next, title: 'New Appendix', content: '', included: true});
+  buildReportEditor();
+  autoSave();
+}
+function rptAppendixDel(idx){
+  if(!confirm('Remove this appendix?')) return;
+  const r = project.report || {};
+  if(!Array.isArray(r.appendices)) return;
+  r.appendices.splice(idx, 1);
+  r.appendices.forEach((a,i) => { a.letter = String.fromCharCode(65 + i); });
+  buildReportEditor();
+  autoSave();
+}
+function _subHeading(label, key){
+  const inc = (project.report && project.report.includes && project.report.includes[key] !== false);
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin:8px 0 4px"><label style="margin:0;font-weight:600;color:var(--text);text-transform:none">' + esc(label) + '</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:var(--text-muted);font-weight:500"><input type="checkbox" ' + (inc?'checked':'') + ' onchange="_toggleInclude(\''+key+'\', this.checked)"> Include in download</label></div>';
 }
 function rptRowDel(key, idx){
   const arr=(project.report||{})[key]; if(arr) arr.splice(idx,1); buildReportEditor(); autoSave();
@@ -2772,7 +2851,27 @@ async function downloadReportDocx(){
   // Cover page
   if(inc.cover !== false){
     const coverTitle1 = r.coverTitle1 || 'TECHNICAL AUDIT REPORT';
-    const coverTitle2 = r.coverTitle2 || ('EMBEDDED NETWORK | ' + String(r.site||'').toUpperCase());
+    const coverTitle2 = r.coverTitle2 || ('EMBEDDED NETWORK | ' + String(_reportTitleName(r)||'').toUpperCase());
+    // Embed logo if uploaded (raster/url types only; SVG is not supported by docx ImageRun here)
+    const logoCfg = project.settings && project.settings.logo;
+    if(logoCfg && logoCfg.data && (logoCfg.type === 'image' || logoCfg.type === 'url')){
+      try {
+        const dataUrl = String(logoCfg.data);
+        if(dataUrl.startsWith('data:')){
+          const base64 = dataUrl.split(',')[1];
+          const binary = atob(base64);
+          const bytes = new Uint8Array(binary.length);
+          for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+          children.push(new D.Paragraph({
+            alignment: D.AlignmentType.RIGHT,
+            children: [new D.ImageRun({
+              data: bytes,
+              transformation: { width: 120, height: 60 }
+            })]
+          }));
+        }
+      } catch(e){ console.warn('Logo embed in docx failed:', e); }
+    }
     children.push(new D.Paragraph({
       alignment:D.AlignmentType.CENTER,
       children:[new D.TextRun({text:coverTitle1, bold:true, size:48})]
@@ -2830,19 +2929,19 @@ async function downloadReportDocx(){
   // Scope
   if(inc.scope !== false && (r.scope_site || r.scope_obj || r.scope_in || r.scope_out)){
     children.push(h1('1. Scope and Objectives'));
-    if(r.scope_site){ children.push(h2('1.1 Site')); paras(r.scope_site).forEach(p=>children.push(p)); }
-    if(r.scope_obj){  children.push(h2('1.2 Audit Objectives')); bul(r.scope_obj).forEach(p=>children.push(p)); }
-    if(r.scope_in){   children.push(h2('1.3 In Scope')); bul(r.scope_in).forEach(p=>children.push(p)); }
-    if(r.scope_out){  children.push(h2('1.4 Out of Scope')); bul(r.scope_out).forEach(p=>children.push(p)); }
+    if(r.scope_site && inc.scope_site !== false){ children.push(h2('1.1 Site')); paras(r.scope_site).forEach(p=>children.push(p)); }
+    if(r.scope_obj  && inc.scope_obj  !== false){ children.push(h2('1.2 Audit Objectives')); bul(r.scope_obj).forEach(p=>children.push(p)); }
+    if(r.scope_in   && inc.scope_in   !== false){ children.push(h2('1.3 In Scope')); bul(r.scope_in).forEach(p=>children.push(p)); }
+    if(r.scope_out  && inc.scope_out  !== false){ children.push(h2('1.4 Out of Scope')); bul(r.scope_out).forEach(p=>children.push(p)); }
   }
 
   // Methodology
   if(inc.methodology !== false && (r.method_doc || r.method_insp || r.method_acc || r.method_std)){
     children.push(h1('2. Methodology'));
-    if(r.method_doc){  children.push(h2('2.1 Documentation Review')); paras(r.method_doc).forEach(p=>children.push(p)); }
-    if(r.method_insp){ children.push(h2('2.2 Physical Inspection')); paras(r.method_insp).forEach(p=>children.push(p)); }
-    if(r.method_acc){  children.push(h2('2.3 Meter Accuracy Testing')); paras(r.method_acc).forEach(p=>children.push(p)); }
-    if(r.method_std){  children.push(h2('2.4 Reference Standards')); bul(r.method_std).forEach(p=>children.push(p)); }
+    if(r.method_doc  && inc.method_doc  !== false){ children.push(h2('2.1 Documentation Review')); paras(r.method_doc).forEach(p=>children.push(p)); }
+    if(r.method_insp && inc.method_insp !== false){ children.push(h2('2.2 Physical Inspection')); paras(r.method_insp).forEach(p=>children.push(p)); }
+    if(r.method_acc  && inc.method_acc  !== false){ children.push(h2('2.3 Meter Accuracy Testing')); paras(r.method_acc).forEach(p=>children.push(p)); }
+    if(r.method_std  && inc.method_std  !== false){ children.push(h2('2.4 Reference Standards')); bul(r.method_std).forEach(p=>children.push(p)); }
   }
 
   // Section 3 - Network Overview and Findings
@@ -2948,11 +3047,12 @@ async function downloadReportDocx(){
       children.push(h1('6. Recommendations'));
       if(String(r.rec_intro||'').trim()) paras(r.rec_intro).forEach(p => children.push(p));
       const buckets = [
-        { label:'6.1 Immediate', tf:'immediate' },
-        { label:'6.2 Short Term (1–6 months)', tf:'short' },
-        { label:'6.3 Long Term (6+ months / capital programme)', tf:'long' }
+        { label:'6.1 Immediate', tf:'immediate', key:'rec_immediate' },
+        { label:'6.2 Short Term (1–6 months)', tf:'short', key:'rec_short' },
+        { label:'6.3 Long Term (6+ months / capital programme)', tf:'long', key:'rec_long' }
       ];
       buckets.forEach(b => {
+        if(inc[b.key] === false) return;
         const rows = recs.filter(rc => (rc.timeframe||'') === b.tf);
         if(!rows.length) return;
         children.push(h2(b.label));
@@ -2978,15 +3078,12 @@ async function downloadReportDocx(){
   // Section 8 - Appendices
   if(inc.appendices !== false){
     children.push(h1('8. Appendices'));
-    const apps = [
-      ['Appendix A — Single Line Diagrams', r.appendix_a],
-      ['Appendix B — Meter Test Records',   r.appendix_b],
-      ['Appendix C — Tenancy Schedule / NMI Register', r.appendix_c]
-    ];
+    const apps = (Array.isArray(r.appendices) ? r.appendices : []).filter(a => a && a.included !== false);
     apps.forEach(a => {
-      children.push(h2(a[0]));
-      const txt = String(a[1]||'').trim();
-      if(txt) paras(a[1]).forEach(p => children.push(p));
+      const heading = 'Appendix ' + (a.letter||'') + (a.title ? ' — ' + a.title : '');
+      children.push(h2(heading));
+      const txt = String(a.content||'').trim();
+      if(txt) paras(a.content).forEach(p => children.push(p));
       else children.push(italicPara('To be appended'));
     });
   }
@@ -2995,7 +3092,7 @@ async function downloadReportDocx(){
   const blob = await D.Packer.toBlob(doc);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = String(r.site || project.name || 'audit_report').replace(/[^a-z0-9]/gi,'_') + '.docx';
+  a.download = String(_reportTitleName(r) || 'audit_report').replace(/[^a-z0-9]/gi,'_') + '.docx';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
@@ -3020,7 +3117,17 @@ function _buildReportHtmlForExport(r, inc){
   // Cover
   if(inc.cover !== false){
     const coverTitle1 = r.coverTitle1 || 'TECHNICAL AUDIT REPORT';
-    const coverTitle2 = r.coverTitle2 || ('EMBEDDED NETWORK | ' + String(r.site||'').toUpperCase());
+    const coverTitle2 = r.coverTitle2 || ('EMBEDDED NETWORK | ' + String(_reportTitleName(r)||'').toUpperCase());
+    const logoCfg = project.settings && project.settings.logo;
+    let logoHtmlForPdf = '';
+    if(logoCfg && logoCfg.data){
+      logoHtmlForPdf = (logoCfg.type === 'svg')
+        ? `<div style="display:inline-block;background:#ffffff;padding:4pt 6pt;max-height:60pt;max-width:160pt;overflow:hidden">${logoCfg.data}</div>`
+        : `<img src="${String(logoCfg.data).replace(/"/g,'&quot;')}" style="max-height:60pt;max-width:160pt;object-fit:contain"/>`;
+    }
+    if(logoHtmlForPdf){
+      h += `<div style="text-align:right;margin-bottom:10pt">${logoHtmlForPdf}</div>`;
+    }
     h += `<div style="text-align:center;margin-bottom:18pt">
       <h1 style="font-size:22pt;color:#232C63;margin:14pt 0 4pt;font-weight:700">${e2(coverTitle1)}</h1>
       <h2 style="font-size:15pt;color:#35679E;margin:4pt 0 14pt;border:0;padding:0;font-weight:700">${e2(coverTitle2)}</h2>
@@ -3062,19 +3169,19 @@ function _buildReportHtmlForExport(r, inc){
   // 1. Scope
   if(inc.scope !== false && has(r.scope_site, r.scope_obj, r.scope_in, r.scope_out)){
     h += `<h2 style="${H2}">1. Scope &amp; Objectives</h2>`;
-    if(r.scope_site) h += `<h3 style="${H3}">1.1 Site</h3>` + paras(r.scope_site);
-    if(r.scope_obj)  h += `<h3 style="${H3}">1.2 Audit Objectives</h3>` + bullets(r.scope_obj);
-    if(r.scope_in)   h += `<h3 style="${H3}">1.3 In Scope</h3>` + bullets(r.scope_in);
-    if(r.scope_out)  h += `<h3 style="${H3}">1.4 Out of Scope</h3>` + bullets(r.scope_out);
+    if(r.scope_site && inc.scope_site !== false) h += `<h3 style="${H3}">1.1 Site</h3>` + paras(r.scope_site);
+    if(r.scope_obj  && inc.scope_obj  !== false) h += `<h3 style="${H3}">1.2 Audit Objectives</h3>` + bullets(r.scope_obj);
+    if(r.scope_in   && inc.scope_in   !== false) h += `<h3 style="${H3}">1.3 In Scope</h3>` + bullets(r.scope_in);
+    if(r.scope_out  && inc.scope_out  !== false) h += `<h3 style="${H3}">1.4 Out of Scope</h3>` + bullets(r.scope_out);
   }
 
   // 2. Methodology
   if(inc.methodology !== false && has(r.method_doc, r.method_insp, r.method_acc, r.method_std)){
     h += `<h2 style="${H2}">2. Methodology</h2>`;
-    if(r.method_doc)  h += `<h3 style="${H3}">2.1 Documentation Review</h3>` + paras(r.method_doc);
-    if(r.method_insp) h += `<h3 style="${H3}">2.2 Physical Inspection</h3>` + paras(r.method_insp);
-    if(r.method_acc)  h += `<h3 style="${H3}">2.3 Meter Accuracy Testing</h3>` + paras(r.method_acc);
-    if(r.method_std)  h += `<h3 style="${H3}">2.4 Reference Standards</h3>` + bullets(r.method_std);
+    if(r.method_doc  && inc.method_doc  !== false) h += `<h3 style="${H3}">2.1 Documentation Review</h3>` + paras(r.method_doc);
+    if(r.method_insp && inc.method_insp !== false) h += `<h3 style="${H3}">2.2 Physical Inspection</h3>` + paras(r.method_insp);
+    if(r.method_acc  && inc.method_acc  !== false) h += `<h3 style="${H3}">2.3 Meter Accuracy Testing</h3>` + paras(r.method_acc);
+    if(r.method_std  && inc.method_std  !== false) h += `<h3 style="${H3}">2.4 Reference Standards</h3>` + bullets(r.method_std);
   }
 
   // 3. Network Overview and Findings
@@ -3158,11 +3265,12 @@ function _buildReportHtmlForExport(r, inc){
       h += `<h2 style="${H2}">6. Recommendations</h2>`;
       if(String(r.rec_intro||'').trim()) h += paras(r.rec_intro);
       const buckets = [
-        { label:'6.1 Immediate', tf:'immediate' },
-        { label:'6.2 Short Term (1–6 months)', tf:'short' },
-        { label:'6.3 Long Term (6+ months / capital programme)', tf:'long' }
+        { label:'6.1 Immediate', tf:'immediate', key:'rec_immediate' },
+        { label:'6.2 Short Term (1–6 months)', tf:'short', key:'rec_short' },
+        { label:'6.3 Long Term (6+ months / capital programme)', tf:'long', key:'rec_long' }
       ];
       buckets.forEach(b => {
+        if(inc[b.key] === false) return;
         const rows = recs.filter(rc => (rc.timeframe||'') === b.tf);
         if(!rows.length) return;
         h += `<h3 style="${H3}">${e2(b.label)}</h3>`;
@@ -3181,15 +3289,12 @@ function _buildReportHtmlForExport(r, inc){
   // 8. Appendices
   if(inc.appendices !== false){
     h += `<h2 style="${H2}">8. Appendices</h2>`;
-    const apps = [
-      ['Appendix A — Single Line Diagrams', r.appendix_a],
-      ['Appendix B — Meter Test Records',   r.appendix_b],
-      ['Appendix C — Tenancy Schedule / NMI Register', r.appendix_c]
-    ];
+    const apps = (Array.isArray(r.appendices) ? r.appendices : []).filter(a => a && a.included !== false);
     apps.forEach(a => {
-      h += `<h3 style="${H3}">${e2(a[0])}</h3>`;
-      const txt = String(a[1]||'').trim();
-      if(txt) h += paras(a[1]);
+      const heading = 'Appendix ' + (a.letter||'') + (a.title ? ' — ' + a.title : '');
+      h += `<h3 style="${H3}">${e2(heading)}</h3>`;
+      const txt = String(a.content||'').trim();
+      if(txt) h += paras(a.content);
       else h += '<p><em>To be appended</em></p>';
     });
   }
@@ -3208,7 +3313,7 @@ async function downloadReportPdf(){
   el.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;background:#fff;font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#333;padding:20mm;line-height:1.5';
   el.innerHTML = _buildReportHtmlForExport(r, inc);
   document.body.appendChild(el);
-  const filename = String(r.site || project.name || 'audit_report').replace(/[^a-z0-9]/gi,'_') + '.pdf';
+  const filename = String(_reportTitleName(r) || 'audit_report').replace(/[^a-z0-9]/gi,'_') + '.pdf';
   try{
     await html2pdf().set({
       margin:[10,10,10,10],
