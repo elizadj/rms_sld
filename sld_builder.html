@@ -839,8 +839,9 @@ function buildSchematicSVG(page, sld){
   const colCx = (i)=> LEFT_PAD + i*colW + colW/2;
 
   // Bus extents — continuous main bus spans all columns.
-  const busLeft  = LEFT_PAD + 8;
-  const busRight = LEFT_PAD + numCols * colW - 8;
+  // Bus endpoints align with the first and last column centres — no overshoot past the outermost circuits
+  const busLeft  = rows.length ? colCx(0) : LEFT_PAD + 8;
+  const busRight = rows.length ? colCx(numCols-1) : LEFT_PAD + numCols * colW - 8;
 
   // Find incomer drop column — boundary between OUTSIDE EN and INSIDE EN circuits.
   // Default: middle of the bus.
@@ -978,8 +979,8 @@ function buildSchematicSVG(page, sld){
   sectionGroups.forEach(g => {
     if(!g.section) return; // bare (empty section) — columns drop straight from main bus
     const subBusY = busY + SUB_BUS_OFFSET;
-    const subL    = colCx(g.startIdx) - colW/2 + 8;
-    const subR    = colCx(g.endIdx)   + colW/2 - 8;
+    const subL = colCx(g.startIdx);
+    const subR = colCx(g.endIdx);
     const subMidX = (subL + subR) / 2;
     // Connector wire — main bus down to centre of sub-bus
     s += `<line x1="${subMidX}" y1="${busY}" x2="${subMidX}" y2="${subBusY}" stroke="#232C63" stroke-width="2"/>`;
